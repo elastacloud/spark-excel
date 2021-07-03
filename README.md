@@ -5,6 +5,12 @@ write data sources using the
 Spark [DataSourceV2](https://spark.apache.org/docs/latest/api/java/org/apache/spark/sql/sources/v2/DataSourceV2.html)
 APIs. This is based on the [Apache POI](https://poi.apache.org/) library which provides the means to read Excel files.
 
+## Important
+
+This repository makes use of [Git-LFS](https://git-lfs.github.com/) to track the Excel files for unit tests. This allows
+for larger files to be uploaded as part of the tests without bloating the repository. If cloning the code you will need
+to ensure you have Git-LFS installed and available.
+
 ## Features
 
 - Handling Excel 97-2003, 2010, and OOXML files (thanks to Apache POI)
