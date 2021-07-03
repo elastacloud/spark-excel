@@ -14,7 +14,7 @@ to ensure you have Git-LFS installed and available.
 ## Features
 
 - Handling Excel 97-2003, 2010, and OOXML files (thanks to Apache POI)
-- Multi-line header files
+- Multi-line headers
 - Reading from multiple worksheets given a name pattern
 - Glob pattern support for reading multiple files
 - Outputting the sheet name in the result set (set via an option)
