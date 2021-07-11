@@ -60,19 +60,19 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
       "workbookPasword" -> "abc123",
       "sheetNamPatten" -> "Sheet[12]",
       "cellAdres" -> "B3",
-      "hdrRowCount" -> "12",
+      "headerCount" -> "12",
       "maxRowCont" -> "2000",
       "includShetNam" -> "true"
     ).asJava)
 
     val exception = the[ExcelParserOptionsException] thrownBy ExcelParserOptions.from(input)
 
-    exception.getMessage.contains("Invalid option 'workbookPasword' did you mean 'workbookPassword'?")
-    exception.getMessage.contains("Invalid option 'sheetNamPatten' did you mean 'sheetNamePattern'?")
-    exception.getMessage.contains("Invalid option 'cellAdres' did you mean 'cellAddress'?")
-    exception.getMessage.contains("Invalid option 'hdrRowCount' did you mean 'headerRowCount'?")
-    exception.getMessage.contains("Invalid option 'maxRowCont' did you mean 'maxRowCount'?")
-    exception.getMessage.contains("Invalid option 'includShetNam' did you mean 'includeSheetName'?")
+    exception.getMessage.contains("Invalid option 'workbookpasword', did you mean 'workbookPassword'?") should be(true)
+    exception.getMessage.contains("Invalid option 'sheetnampatten', did you mean 'sheetNamePattern'?") should be(true)
+    exception.getMessage.contains("Invalid option 'celladres', did you mean 'cellAddress'?") should be(true)
+    exception.getMessage.contains("Invalid option 'headercount', did you mean 'headerRowCount'?") should be(true)
+    exception.getMessage.contains("Invalid option 'maxrowcont', did you mean 'maxRowCount'?") should be(true)
+    exception.getMessage.contains("Invalid option 'includshetnam', did you mean 'includeSheetName'?") should be(true)
   }
 
   it should "ignore options which are invalid and not close in spelling to valid options" in {
