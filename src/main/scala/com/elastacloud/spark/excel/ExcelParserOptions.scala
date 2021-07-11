@@ -66,7 +66,7 @@ private[excel] object ExcelParserOptions {
     keys.foreach(key => {
       val encodedKey = encoder.encode(key)
       if (!mappings.values.exists(_.compareToIgnoreCase(key) == 0) && mappings.contains(encodedKey)) {
-        buffer.append(s"Invalid option '$key', did you mean '${mappings(encodedKey)}'?")
+        buffer.append(s"Invalid option '${key.toLowerCase}', did you mean '${mappings(encodedKey)}'?")
       }
     })
 
