@@ -31,3 +31,16 @@ jobs:
     
     - name: Run tests and produce coverage
       run: sbt -DsparkVersion="${{matrix.sparkVersion}}" clean coverageOn test coverageReport
+    
+    - name: Upload coverage to CodeCov
+      uses: codecov/codecov-action@v1.5.2
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        files: cobertura.xml
+        directory: ./target/spark-${{ matrix.sparkVersion }}/scala-2.12/coverage-report
+        env_vars: ${{ matrix.sparkVersion }}
+        name: spark-excel
+        path_to_write_report: ./target/spark-${{ matrix.sparkVersion }}/scala-2.12/coverage-report/codecov_report.txt
+        verbose: true
+
+        
