@@ -46,3 +46,10 @@ jobs:
     - name: Create assembly
       if: ${{ github.event_name != 'pull_request' }}
       run: sbt -DsparkVersion="${{matrix.sparkVersion}}" clean coverageOff assembly
+    
+    - name: Upload the package
+      if: ${{ github.event_name != 'pull_request' }}
+      uses: actions/upload-artifact@v2.2.4
+      with:
+        path: ./target/spark-${{ matrix.sparkVersion }}/scala-2.12/spark-excel*.jar
+        if-no-files-found: warn
