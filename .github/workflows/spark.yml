@@ -38,8 +38,11 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
         files: ./target/spark-${{ matrix.sparkVersion }}/scala-2.12/coverage-report/cobertura.xml
         env_vars: ${{ matrix.sparkVersion }}
+        fail_ci_if_error: true
         name: spark-excel
         path_to_write_report: ./target/spark-${{ matrix.sparkVersion }}/scala-2.12/coverage-report/codecov_report.txt
         verbose: true
 
-        
+    - name: Create assembly
+      if: ${{ github.event_name != 'pull_request' }}
+      run: sbt -DsparkVersion="${{matrix.sparkVersion}}" clean coverageOff assembly
