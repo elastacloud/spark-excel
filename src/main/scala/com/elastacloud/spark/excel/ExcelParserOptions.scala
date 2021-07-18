@@ -16,7 +16,11 @@
 
 package com.elastacloud.spark.excel
 
+import org.apache.commons.codec.language.DoubleMetaphone
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
+
+import scala.collection.convert.ImplicitConversions.`collection AsScalaIterable`
+import scala.collection.mutable.ArrayBuffer
 
 /**
  * Defines the Excel parser options
@@ -36,6 +40,39 @@ private[excel] case class ExcelParserOptions(workbookPassword: Option[String] = 
                                              includeSheetName: Boolean = false)
 
 private[excel] object ExcelParserOptions {
+  private val encoder = new DoubleMetaphone()
+
+  /**
+   * Valid parser options and their phonetic values
+   */
+  private val mappings = Map[String, String](
+    encoder.encode("workbookPassword") -> "workbookPassword",
+    encoder.encode("sheetNamePattern") -> "sheetNamePattern",
+    encoder.encode("cellAddress") -> "cellAddress",
+    encoder.encode("headerRowCount") -> "headerRowCount",
+    encoder.encode("maxRowCount") -> "maxRowCount",
+    encoder.encode("includeSheetName") -> "includeSheetName"
+  )
+
+  /**
+   * Checks the provided set of keys for invalid options and attempts to match again
+   * valid options.
+   * @param keys collection of keys to valid
+   * @return An [[Option]] containing a string if there are errors, or [[None]]
+   */
+  private def checkInvalidOptions(keys: Set[String]): Option[Seq[String]] = {
+    val buffer = new ArrayBuffer[String]()
+
+    keys.foreach(key => {
+      val encodedKey = encoder.encode(key)
+      if (!mappings.values.exists(_.compareToIgnoreCase(key) == 0) && mappings.contains(encodedKey)) {
+        buffer.append(s"Invalid option '${key.toLowerCase}', did you mean '${mappings(encodedKey)}'?")
+      }
+    })
+
+    if (buffer.isEmpty) None else Some(buffer)
+  }
+
   /**
    * Creates a new [[ExcelParserOptions]] object from a [[CaseInsensitiveStringMap]] collection
    *
@@ -43,6 +80,11 @@ private[excel] object ExcelParserOptions {
    * @return an [[ExcelParserOptions]] object
    */
   def from(options: CaseInsensitiveStringMap): ExcelParserOptions = {
+    checkInvalidOptions(options.keySet().toSet) match {
+      case Some(errors) => throw new ExcelParserOptionsException(s"Unable to parse options:\n${errors.mkString("\n")}")
+      case _ =>
+    }
+
     val worksheetPassword = if (options.containsKey("workbookPassword")) {
       Some(options.get("workbookPassword"))
     } else {
@@ -59,7 +101,18 @@ private[excel] object ExcelParserOptions {
     )
   }
 
+  /**
+   * Creates a new [[ExcelParserOptions]] object from a [[Map]] collection
+   *
+   * @param options the map of options to read from
+   * @return an [[ExcelParserOptions]] object
+   */
   def from(options: Map[String, String]): ExcelParserOptions = {
+    checkInvalidOptions(options.keySet) match {
+      case Some(errors) => throw new ExcelParserOptionsException(s"Unable to parse options:\n${errors.mkString("\n")}")
+      case _ =>
+    }
+
     val worksheetPassword = if (options.keys.exists(_.compareToIgnoreCase("workbookPassword") == 0)) {
       Some(options("workbookPassword"))
     } else {
