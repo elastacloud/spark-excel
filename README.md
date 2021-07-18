@@ -1,5 +1,7 @@
 # Spark-Excel
 
+[![codecov](https://codecov.io/gh/elastacloud/spark-excel/branch/main/graph/badge.svg?token=M6313GUBPV)](https://codecov.io/gh/elastacloud/spark-excel)
+
 A Spark data source for reading Microsoft Excel workbooks. Initially started to "scratch and itch" and to learn how to
 write data sources using the
 Spark [DataSourceV2](https://spark.apache.org/docs/latest/api/java/org/apache/spark/sql/sources/v2/DataSourceV2.html)
