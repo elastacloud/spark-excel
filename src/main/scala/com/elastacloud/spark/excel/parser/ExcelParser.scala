@@ -224,26 +224,29 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
       val currentCellValue = formulaEvaluator.evaluate(currentCell)
       currentCellValue.getCellType match {
         case CellType._NONE | CellType.BLANK | CellType.ERROR => null
-        case CellType.BOOLEAN => if (targetType.isInstanceOf[StringType]) {
-          UTF8String.fromString(currentCellValue.getBooleanValue.toString)
-        } else {
-          currentCellValue.getBooleanValue
+        case CellType.BOOLEAN => targetType match {
+          case _: StringType => UTF8String.fromString(currentCellValue.getBooleanValue.toString)
+          case _: BooleanType => currentCellValue.getBooleanValue
+          case _ => null
         }
-        case CellType.NUMERIC => if (DateUtil.isCellDateFormatted(currentCell)) {
-          if (targetType.isInstanceOf[StringType]) {
+        case CellType.NUMERIC => targetType match {
+          case _: StringType => if (DateUtil.isCellDateFormatted(currentCell)) {
             UTF8String.fromString(DateUtil.getLocalDateTime(currentCellValue.getNumberValue).format(DateTimeFormatter.ISO_DATE_TIME))
           } else {
+            UTF8String.fromString(currentCellValue.getNumberValue.toString)
+          }
+          case _: DateType | TimestampType | IntegerType | LongType | FloatType | DoubleType => if (DateUtil.isCellDateFormatted(currentCell)) {
             val ts = Timestamp.valueOf(DateUtil.getLocalDateTime(currentCellValue.getNumberValue))
             DateTimeUtils.fromJavaTimestamp(ts)
-          }
-        } else {
-          if (targetType.isInstanceOf[StringType]) {
-            UTF8String.fromString(currentCellValue.getNumberValue.toString)
           } else {
             currentCellValue.getNumberValue
           }
+          case _ => null
         }
-        case CellType.STRING => UTF8String.fromString(currentCellValue.getStringValue)
+        case CellType.STRING => targetType match {
+          case _: StringType => UTF8String.fromString(currentCellValue.getStringValue)
+          case _ => null
+        }
         case _ => UTF8String.fromString(currentCellValue.toString)
       }
     }

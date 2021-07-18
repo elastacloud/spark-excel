@@ -118,6 +118,35 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "handle cells with different types from the inferred schema" in {
+    withInputStream("/Parser/VaryingTypes.xlsx") { inputStream =>
+      val options = ExcelParserOptions(maxRowCount = 3) // Limit the row count so that it doesn't infer based on the string row
+
+      val expectedSchema = StructType(Array(
+        StructField("Item", StringType, nullable = true),
+        StructField("2010_0", DoubleType, nullable = true),
+        StructField("2011_0", DoubleType, nullable = true)
+      ))
+
+      val expectedData = Seq(
+        Vector[Any]("Item 1".asUnsafe, 99.4, 99.4),
+        Vector[Any]("Item 2".asUnsafe, 12.4, 12.4),
+        Vector[Any]("Item 3".asUnsafe, 74.2, 74.2),
+        Vector[Any]("Item 4".asUnsafe, 36.8, 36.8),
+        Vector[Any]("Item 5".asUnsafe, 24.2, 24.2),
+        Vector[Any]("Item 6".asUnsafe, 11.6, 11.6),
+        Vector[Any]("Header Items".asUnsafe, null, null),
+        Vector[Any]("Item 12".asUnsafe, 99.2, 99.2),
+        Vector[Any]("Item 13".asUnsafe, 18.4, 18.4),
+        Vector[Any]("Item 14".asUnsafe, 12.3, 12.3)
+      )
+
+      val parser = new ExcelParser(inputStream, options)
+      parser.readDataSchema() should equal(expectedSchema)
+      parser.getDataIterator.toList should equal(expectedData)
+    }
+  }
+
   "Opening a password protected workbook" should "succeed with a valid password" in {
     withInputStream("/Parser/PasswordProtectedWorkbook.xlsx") { inputStream =>
       val options = ExcelParserOptions(workbookPassword = Some("password"))
@@ -304,7 +333,6 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
       parser.getDataIterator.toList should equal(expectedData)
     }
   }
-
 
   it should "return valid string representations of values if the source data is non-string" in {
     withInputStream("/Parser/NonStringValues.xlsx") { inputStream =>
