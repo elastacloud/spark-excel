@@ -7,9 +7,7 @@ import org.scalatest.matchers.should.Matchers
 import scala.collection.JavaConverters.mapAsJavaMapConverter
 
 class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
-  behavior of "Creating a default instance"
-
-  it should "use default values" in {
+  "Creating a default instance" should "use default values" in {
     val options = new ExcelParserOptions()
 
     options.workbookPassword should be(None)
@@ -20,9 +18,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.includeSheetName should be(false)
   }
 
-  behavior of "Creating from a case insensitive map"
-
-  it should "use default values for an empty map" in {
+  "Creating from a case insensitive map" should "use default values for an empty map" in {
     val input = new CaseInsensitiveStringMap(Map[String, String]().asJava)
 
     val options = ExcelParserOptions.from(input)
@@ -85,9 +81,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.workbookPassword should be(None)
   }
 
-  behavior of "Creating from a string map"
-
-  it should "use default values for an empty map" in {
+  "Creating from a string map" should "use default values for an empty map" in {
     val input = Map[String, String]()
 
     val options = ExcelParserOptions.from(input)
