@@ -1,5 +1,6 @@
 # Spark-Excel
 
+[![Spark Excel CI](https://github.com/elastacloud/spark-excel/actions/workflows/spark.yml/badge.svg)](https://github.com/elastacloud/spark-excel/actions/workflows/spark.yml)
 [![codecov](https://codecov.io/gh/elastacloud/spark-excel/branch/main/graph/badge.svg?token=M6313GUBPV)](https://codecov.io/gh/elastacloud/spark-excel)
 
 A Spark data source for reading Microsoft Excel workbooks. Initially started to "scratch and itch" and to learn how to
