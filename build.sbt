@@ -20,6 +20,7 @@ lazy val root = (project in file("."))
   .settings(commonSettings)
 
 val sparkVersion = settingKey[String]("Spark version")
+val sparkExcelVersion = settingKey[String]("Version of the Spark Excel library")
 val scalaTestVersion = settingKey[String]("ScalaTest version")
 val poiVersion = settingKey[String]("Apache POI version")
 
@@ -28,6 +29,25 @@ organization := "com.elastacloud"
 description := "A custom data reader for Microsoft Excel documents based on the Apache POI project"
 homepage := Some(url("https://www.elastacloud.com"))
 developers += Developer(id = "dazfuller", name = "Darren Fuller", email = "darren@elastacloud.com", url = url("https://github.com/dazfuller"))
+scmInfo := Some(ScmInfo(url("https://github.com/elastacloud/spark-excel"), "git@github.com:elastacloud/spark-excel.git"))
+licenses += ("Apache License, Version 2.0", url("https://www.apache.org/licenses/LICENSE-2.0"))
+
+Compile / packageBin / publishArtifact := false
+Compile / packageDoc / publishArtifact := false
+Compile / packageSrc / publishArtifact := false
+
+artifactName := { (sv: ScalaVersion, module: ModuleID, artifact: Artifact) =>
+  s"${artifact.name}-${(ThisBuild / version).value}.${artifact.extension}"
+}
+
+publishMavenStyle := true
+publishTo := Some("Github Elastacloud Apache Maven Projects" at "https://maven.pkg.github.com/elastacloud/spark-excel")
+credentials += Credentials(
+  "GitHub Package Registry",
+  "maven.pkg.github.com",
+  "elastacloud",
+  System.getenv("GITHUB_TOKEN")
+)
 
 target := file("target") / s"spark-${sparkVersion.value}"
 
@@ -65,13 +85,13 @@ ThisBuild / assemblyShadeRules := Seq(
 
 ThisBuild / assemblyMergeStrategy := {
   case PathList("META-INF", "services", "org.apache.spark.sql.sources.DataSourceRegister") => MergeStrategy.concat
-  case PathList("com", "elastacloud", _ @ _*) => MergeStrategy.last
-  case PathList("elastashade", "poi", _ @ _*) => MergeStrategy.last
-  case PathList("elastashade", "commons", "compress", _ @ _*) => MergeStrategy.last
-  case PathList("elastashade", "commons", "collections4", _ @ _*) => MergeStrategy.last
-  case PathList("org", "apache", "xmlbeans", _ @ _*) => MergeStrategy.last
-  case PathList("org", "openxmlformats", "schemas", _ @ _*) => MergeStrategy.last
-  case PathList("schemaorg_apache_xmlbeans", _ @ _*) => MergeStrategy.last
+  case PathList("com", "elastacloud", _@_*) => MergeStrategy.last
+  case PathList("elastashade", "poi", _@_*) => MergeStrategy.last
+  case PathList("elastashade", "commons", "compress", _@_*) => MergeStrategy.last
+  case PathList("elastashade", "commons", "collections4", _@_*) => MergeStrategy.last
+  case PathList("org", "apache", "xmlbeans", _@_*) => MergeStrategy.last
+  case PathList("org", "openxmlformats", "schemas", _@_*) => MergeStrategy.last
+  case PathList("schemaorg_apache_xmlbeans", _@_*) => MergeStrategy.last
   case _ => MergeStrategy.discard
 }
 
@@ -79,12 +99,28 @@ assembly / assemblyOption ~= {
   _.withIncludeScala(false)
 }
 
-assembly / assemblyJarName := s"${name.value}-${sparkVersion.value}_${version.value}.jar"
+assembly / assemblyJarName := s"${name.value}-${version.value}.jar"
+
+assembly / artifact := {
+  val art = (assembly / artifact).value
+  art.withClassifier(Some("assembly"))
+}
+
+addArtifact(Compile / assembly / artifact, assembly)
 
 // Define common settings for the library
 val commonSettings = Seq(
-  sparkVersion := System.getProperty("sparkVersion", "3.1.1"),
-  scalaVersion := "2.12.10",
+  sparkVersion := System.getProperty("sparkVersion", "3.2.0"),
+  sparkExcelVersion := "0.1.7",
+  version := s"${sparkVersion.value}_${sparkExcelVersion.value}",
+  scalaVersion := {
+    if (sparkVersion.value < "3.2.0") {
+      "2.12.10"
+    } else {
+      "2.12.14"
+    }
+  },
   scalaTestVersion := "3.2.9",
-  poiVersion := "4.1.2"
+  poiVersion := "4.1.2",
+  crossVersion := CrossVersion.disabled
 )
