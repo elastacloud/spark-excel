@@ -14,6 +14,11 @@ This repository makes use of [Git-LFS](https://git-lfs.github.com/) to track the
 for larger files to be uploaded as part of the tests without bloating the repository. If cloning the code you will need
 to ensure you have Git-LFS installed and available.
 
+## Download
+
+Check out the [releases](https://github.com/elastacloud/spark-excel/releases) page for the latest jar files to match the
+version of Spark you're developing against.
+
 ## Features
 
 - Handling Excel 97-2003, 2010, and OOXML files (thanks to Apache POI)
