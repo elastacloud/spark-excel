@@ -14,23 +14,26 @@
     https://www.elastacloud.com
 #>
 
-$versions = @("3.0.1", "3.0.2", "3.1.1", "3.1.2")
+$versions = @("3.0.1", "3.0.2", "3.0.3", "3.1.1", "3.1.2", "3.2.0", "3.2.1")
 $jarPath = "./target/jars"
 $covPath = "./target/coverage"
 
 Write-Host "Clearing existing artefacts" -ForegroundColor Green
-if (Test-Path $jarPath) {
+if (Test-Path $jarPath)
+{
     Remove-Item -Path $jarPath -Force -Recurse
 }
 
-if (Test-Path $covPath) {
+if (Test-Path $covPath)
+{
     Remove-Item -Path $covPath -Force -Recurse
 }
 
 New-Item -Path $jarPath -ItemType Directory
 New-Item -Path $covPath -ItemType Directory
 
-foreach ($version in $versions) {
+foreach ($version in $versions)
+{
     Write-Host "Building for Spark version: $version" -ForegroundColor Green
     & sbt -DsparkVersion="$version" clean coverageOn test coverageReport coverageOff assembly
 }
