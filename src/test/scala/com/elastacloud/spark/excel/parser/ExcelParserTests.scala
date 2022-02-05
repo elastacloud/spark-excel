@@ -268,6 +268,29 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "Handle string concatenation formulas" in {
+    withInputStream("/Parser/ConcatString.xlsx") { inputStream =>
+      val expectedSchema = StructType(Array(
+        StructField("Title", StringType, nullable = true),
+        StructField("Given_Name", StringType, nullable = true),
+        StructField("Family_Name", StringType, nullable = true),
+        StructField("Full_Name", StringType, nullable = true)
+      ))
+
+      val expectedData = Seq(
+        Vector[Any]("Dr".asUnsafe, "Jennifer".asUnsafe, "Alagora".asUnsafe, "Dr Jennifer Alagora".asUnsafe),
+        Vector[Any]("Mr".asUnsafe, "Adam".asUnsafe, "Fox".asUnsafe, "Mr Adam Fox".asUnsafe),
+        Vector[Any]("Ms".asUnsafe, null, "Proctor".asUnsafe, "Ms Proctor".asUnsafe)
+      )
+
+      var parser = new ExcelParser(inputStream, ExcelParserOptions())
+      parser.readDataSchema() should equal(expectedSchema)
+
+      val actualData = parser.getDataIterator.toList
+      actualData should equal(expectedData)
+    }
+  }
+
   "Opening a workbook with blank cells" should "continue to be read without error" in {
     withInputStream("/Parser/SimpleWorkbookWithBlanks.xlsx") { inputStream =>
       val options = ExcelParserOptions()

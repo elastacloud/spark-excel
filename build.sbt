@@ -36,7 +36,7 @@ Compile / packageBin / publishArtifact := false
 Compile / packageDoc / publishArtifact := false
 Compile / packageSrc / publishArtifact := false
 
-artifactName := { (sv: ScalaVersion, module: ModuleID, artifact: Artifact) =>
+artifactName := { (_: ScalaVersion, _: ModuleID, artifact: Artifact) =>
   s"${artifact.name}-${(ThisBuild / version).value}.${artifact.extension}"
 }
 
@@ -57,8 +57,8 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-sql" % sparkVersion.value % Provided,
   "org.apache.poi" % "poi" % poiVersion.value % Compile,
   "org.apache.poi" % "poi-ooxml" % poiVersion.value % Compile,
-  "org.apache.poi" % "poi-ooxml-schemas" % poiVersion.value % Compile,
-  "org.apache.commons" % "commons-compress" % "1.20" % Compile,
+  "org.apache.poi" % "poi-ooxml-full" % poiVersion.value % Compile,
+  "org.apache.commons" % "commons-compress" % "1.21" % Compile,
   "org.apache.commons" % "commons-collections4" % "4.4" % Compile
 )
 
@@ -121,6 +121,6 @@ val commonSettings = Seq(
     }
   },
   scalaTestVersion := "3.2.9",
-  poiVersion := "4.1.2",
+  poiVersion := "5.2.0",
   crossVersion := CrossVersion.disabled
 )
