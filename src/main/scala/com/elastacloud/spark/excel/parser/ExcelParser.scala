@@ -27,7 +27,7 @@ import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
 
 import java.io.InputStream
-import java.sql.Timestamp
+import java.sql.{Date, Timestamp}
 import java.time.format.DateTimeFormatter
 import scala.collection.JavaConverters._
 
@@ -248,12 +248,16 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
           } else {
             UTF8String.fromString(currentCellValue.getNumberValue.toString)
           }
-          case _: DateType | TimestampType | IntegerType | LongType | FloatType | DoubleType => if (DateUtil.isCellDateFormatted(currentCell)) {
+          case _: TimestampType if DateUtil.isCellDateFormatted(currentCell) =>
             val ts = Timestamp.valueOf(DateUtil.getLocalDateTime(currentCellValue.getNumberValue))
             DateTimeUtils.fromJavaTimestamp(ts)
-          } else {
-            currentCellValue.getNumberValue
-          }
+          case _: DateType if DateUtil.isCellDateFormatted(currentCell) =>
+            val ts = Timestamp.valueOf(DateUtil.getLocalDateTime(currentCellValue.getNumberValue))
+            DateTimeUtils.fromJavaDate(Date.valueOf(ts.toLocalDateTime.toLocalDate))
+          case _: IntegerType => currentCellValue.getNumberValue.toInt
+          case _: LongType => currentCellValue.getNumberValue.toLong
+          case _: FloatType => currentCellValue.getNumberValue.toFloat
+          case _: DoubleType => currentCellValue.getNumberValue
           case _ => null
         }
         case CellType.STRING => targetType match {

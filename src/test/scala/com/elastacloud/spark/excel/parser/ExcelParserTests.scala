@@ -24,7 +24,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 import java.io.{FileInputStream, InputStream}
-import java.sql.Timestamp
+import java.sql.{Date, Timestamp}
 
 class ExcelParserTests extends AnyFlatSpec with Matchers {
   private def getTestFileStream(relativePath: String): InputStream = {
@@ -283,7 +283,7 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
         Vector[Any]("Ms".asUnsafe, null, "Proctor".asUnsafe, "Ms Proctor".asUnsafe)
       )
 
-      var parser = new ExcelParser(inputStream, ExcelParserOptions())
+      val parser = new ExcelParser(inputStream, ExcelParserOptions())
       parser.readDataSchema() should equal(expectedSchema)
 
       val actualData = parser.getDataIterator.toList
@@ -354,6 +354,59 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
 
       val parser = new ExcelParser(inputStream, options, Some(dataSchema), Some(readSchema))
       parser.getDataIterator.toList should equal(expectedData)
+    }
+  }
+
+  it should "handle numeric values where the requested schema type is integer or long" in {
+    withInputStream("/Parser/VaryingTypes.xlsx") { inputStream =>
+      val options = ExcelParserOptions()
+
+      val dataSchema = StructType(Array(
+        StructField("Item", StringType, nullable = true),
+        StructField("2010", IntegerType, nullable = true),
+        StructField("2011", LongType, nullable = true)
+      ))
+
+      val expectedData = Seq(
+        Vector[Any]("Item 1".asUnsafe, 99, 99L),
+        Vector[Any]("Item 2".asUnsafe, 12, 12L),
+        Vector[Any]("Item 3".asUnsafe, 74, 74L),
+        Vector[Any]("Item 4".asUnsafe, 36, 36L),
+        Vector[Any]("Item 5".asUnsafe, 24, 24L),
+        Vector[Any]("Item 6".asUnsafe, 11, 11L),
+        Vector[Any]("Header Items".asUnsafe, null, null),
+        Vector[Any]("Item 12".asUnsafe, 99, 99L),
+        Vector[Any]("Item 13".asUnsafe, 18, 18L),
+        Vector[Any]("Item 14".asUnsafe, 12, 12L)
+      )
+
+      val parser = new ExcelParser(inputStream, options, Some(dataSchema), Some(dataSchema))
+      parser.getDataIterator.toList should equal(expectedData)
+    }
+  }
+
+  it should "handle numeric values where the requested schema type is date, float, or double" in {
+    withInputStream("/Parser/CalculatedData.xlsx") { inputStream =>
+      val options = ExcelParserOptions()
+
+      val dataSchema = StructType(Array(
+        StructField("Col_A", IntegerType, nullable = true),
+        StructField("Col_B", DateType, nullable = true),
+        StructField("Col_C", FloatType, nullable = true),
+        StructField("Col_D", DateType, nullable = true),
+        StructField("Col_E", DoubleType, nullable = true)
+      ))
+
+      val expectedData = Vector[Any](
+        1,
+        DateTimeUtils.fromJavaDate(Date.valueOf("2020-01-01")),
+        1F,
+        DateTimeUtils.fromJavaDate(Date.valueOf("2020-04-30")),
+        1D
+      )
+
+      val parser = new ExcelParser(inputStream, options, Some(dataSchema), Some(dataSchema))
+      parser.getDataIterator.toList.head should equal(expectedData)
     }
   }
 
