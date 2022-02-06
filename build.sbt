@@ -57,7 +57,7 @@ libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-sql" % sparkVersion.value % Provided,
   "org.apache.poi" % "poi" % poiVersion.value % Compile,
   "org.apache.poi" % "poi-ooxml" % poiVersion.value % Compile,
-  "org.apache.poi" % "poi-ooxml-full" % poiVersion.value % Compile,
+  "org.apache.poi" % "poi-ooxml-lite" % poiVersion.value % Compile,
   "org.apache.commons" % "commons-compress" % "1.21" % Compile,
   "org.apache.commons" % "commons-collections4" % "4.4" % Compile
 )
@@ -80,15 +80,18 @@ coverageHighlighting := true
 ThisBuild / assemblyShadeRules := Seq(
   ShadeRule.rename("org.apache.poi.**" -> "elastashade.poi.@1").inAll,
   ShadeRule.rename("org.apache.commons.collections4.**" -> "elastashade.commons.collections4.@1").inAll,
-  ShadeRule.rename("org.apache.commons.compress.**" -> "elastashade.commons.compress.@1").inAll
+  ShadeRule.rename("org.apache.commons.compress.**" -> "elastashade.commons.compress.@1").inAll,
+  ShadeRule.rename("org.apache.logging.log4j.**" -> "elastashade.logging.log4j.@1").inAll
 )
 
 ThisBuild / assemblyMergeStrategy := {
-  case PathList("META-INF", "services", "org.apache.spark.sql.sources.DataSourceRegister") => MergeStrategy.concat
+  //case PathList("META-INF", "services", "org.apache.spark.sql.sources.DataSourceRegister") => MergeStrategy.concat
+  case PathList("META-INF", "services", _@_*) => MergeStrategy.first
   case PathList("com", "elastacloud", _@_*) => MergeStrategy.last
   case PathList("elastashade", "poi", _@_*) => MergeStrategy.last
   case PathList("elastashade", "commons", "compress", _@_*) => MergeStrategy.last
   case PathList("elastashade", "commons", "collections4", _@_*) => MergeStrategy.last
+  case PathList("elastashade", "logging", "log4j", _@_*) => MergeStrategy.last
   case PathList("org", "apache", "xmlbeans", _@_*) => MergeStrategy.last
   case PathList("org", "openxmlformats", "schemas", _@_*) => MergeStrategy.last
   case PathList("schemaorg_apache_xmlbeans", _@_*) => MergeStrategy.last

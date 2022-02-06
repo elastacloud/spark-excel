@@ -17,9 +17,11 @@
 package com.elastacloud.spark.excel.parser
 
 import com.elastacloud.spark.excel.ExcelParserOptions
+import org.apache.poi.hssf.usermodel.HSSFWorkbookFactory
 import org.apache.poi.openxml4j.util.ZipSecureFile
 import org.apache.poi.ss.usermodel._
 import org.apache.poi.ss.util.CellAddress
+import org.apache.poi.xssf.usermodel.XSSFWorkbookFactory
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
@@ -369,6 +371,14 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
 }
 
 object ExcelParser {
+  // Make sure that the correct providers are added. Adding this to the object as we can encounter
+  // a concurrent modification error if this happens in the class
+  WorkbookFactory.removeProvider(classOf[HSSFWorkbookFactory])
+  WorkbookFactory.removeProvider(classOf[XSSFWorkbookFactory])
+
+  WorkbookFactory.addProvider(new HSSFWorkbookFactory)
+  WorkbookFactory.addProvider(new XSSFWorkbookFactory)
+
   /**
    * Read the schema from an Excel workbook based on user defined [[ExcelParserOptions]]
    *
