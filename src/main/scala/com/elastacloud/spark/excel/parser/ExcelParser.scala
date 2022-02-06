@@ -38,6 +38,17 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
    * Instance of the workbook, opened using the password if provided
    */
   private val workBook: Workbook = {
+    // Make sure that the correct providers are added
+    val types = Seq[WorkbookProvider](new HSSFWorkbookFactory, new XSSFWorkbookFactory)
+
+    // Use synchronized to prevent concurrency issues in tests
+    this.synchronized {
+      for (elem <- types) {
+        WorkbookFactory.removeProvider(elem.getClass)
+        WorkbookFactory.addProvider(elem)
+      }
+    }
+
     ZipSecureFile.setMinInflateRatio(0)
     options.workbookPassword match {
       case Some(password) => WorkbookFactory.create(inputStream, password)
@@ -133,7 +144,7 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
         true
       } else if (currentDataRow <= lastDataRow) {
         true
-      } else if (currentDataRow > lastDataRow && sheetIterator.hasNext) {
+      } else if (sheetIterator.hasNext) {
         loadNextSheet()
         true
       } else {
@@ -371,14 +382,6 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
 }
 
 object ExcelParser {
-  // Make sure that the correct providers are added. Adding this to the object as we can encounter
-  // a concurrent modification error if this happens in the class
-  WorkbookFactory.removeProvider(classOf[HSSFWorkbookFactory])
-  WorkbookFactory.removeProvider(classOf[XSSFWorkbookFactory])
-
-  WorkbookFactory.addProvider(new HSSFWorkbookFactory)
-  WorkbookFactory.addProvider(new XSSFWorkbookFactory)
-
   /**
    * Read the schema from an Excel workbook based on user defined [[ExcelParserOptions]]
    *
