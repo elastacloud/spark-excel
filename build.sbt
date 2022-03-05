@@ -117,7 +117,7 @@ addArtifact(Compile / assembly / artifact, assembly)
 // Define common settings for the library
 val commonSettings = Seq(
   sparkVersion := System.getProperty("sparkVersion", "3.2.1"),
-  sparkExcelVersion := "0.1.8-SNAPSHOT",
+  sparkExcelVersion := "0.1.8",
   version := s"${sparkVersion.value}_${sparkExcelVersion.value}",
   scalaVersion := {
     if (sparkVersion.value < "3.2.0") {
