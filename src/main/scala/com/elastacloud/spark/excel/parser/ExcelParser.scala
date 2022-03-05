@@ -17,15 +17,18 @@
 package com.elastacloud.spark.excel.parser
 
 import com.elastacloud.spark.excel.ExcelParserOptions
+import com.elastacloud.spark.excel.parser.ExcelParser.providersAdded
+import org.apache.poi.hssf.usermodel.HSSFWorkbookFactory
 import org.apache.poi.openxml4j.util.ZipSecureFile
 import org.apache.poi.ss.usermodel._
 import org.apache.poi.ss.util.CellAddress
+import org.apache.poi.xssf.usermodel.XSSFWorkbookFactory
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
 
 import java.io.InputStream
-import java.sql.Timestamp
+import java.sql.{Date, Timestamp}
 import java.time.format.DateTimeFormatter
 import scala.collection.JavaConverters._
 
@@ -36,6 +39,21 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
    * Instance of the workbook, opened using the password if provided
    */
   private val workBook: Workbook = {
+    // Make sure that the correct providers are added
+    val types = Seq[WorkbookProvider](new HSSFWorkbookFactory, new XSSFWorkbookFactory)
+
+    // Use synchronized to prevent concurrency issues in tests
+    this.synchronized {
+      // Use the flag so that this is only done one time
+      if (!providersAdded) {
+        for (elem <- types) {
+          WorkbookFactory.removeProvider(elem.getClass)
+          WorkbookFactory.addProvider(elem)
+        }
+        providersAdded = true
+      }
+    }
+
     ZipSecureFile.setMinInflateRatio(0)
     options.workbookPassword match {
       case Some(password) => WorkbookFactory.create(inputStream, password)
@@ -131,7 +149,7 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
         true
       } else if (currentDataRow <= lastDataRow) {
         true
-      } else if (currentDataRow > lastDataRow && sheetIterator.hasNext) {
+      } else if (sheetIterator.hasNext) {
         loadNextSheet()
         true
       } else {
@@ -235,12 +253,16 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
           } else {
             UTF8String.fromString(currentCellValue.getNumberValue.toString)
           }
-          case _: DateType | TimestampType | IntegerType | LongType | FloatType | DoubleType => if (DateUtil.isCellDateFormatted(currentCell)) {
+          case _: TimestampType if DateUtil.isCellDateFormatted(currentCell) =>
             val ts = Timestamp.valueOf(DateUtil.getLocalDateTime(currentCellValue.getNumberValue))
             DateTimeUtils.fromJavaTimestamp(ts)
-          } else {
-            currentCellValue.getNumberValue
-          }
+          case _: DateType if DateUtil.isCellDateFormatted(currentCell) =>
+            val ts = Timestamp.valueOf(DateUtil.getLocalDateTime(currentCellValue.getNumberValue))
+            DateTimeUtils.fromJavaDate(Date.valueOf(ts.toLocalDateTime.toLocalDate))
+          case _: IntegerType => currentCellValue.getNumberValue.toInt
+          case _: LongType => currentCellValue.getNumberValue.toLong
+          case _: FloatType => currentCellValue.getNumberValue.toFloat
+          case _: DoubleType => currentCellValue.getNumberValue
           case _ => null
         }
         case CellType.STRING => targetType match {
@@ -369,6 +391,13 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
 }
 
 object ExcelParser {
+  /**
+   * Flag to determine if the Excel workbook factory providers have been added. This is typically not required
+   * in deployed scenarios, but the unit tests become unstable without it and the logic in the class. And we
+   * all love working unit tests.
+   */
+  private var providersAdded = false
+
   /**
    * Read the schema from an Excel workbook based on user defined [[ExcelParserOptions]]
    *

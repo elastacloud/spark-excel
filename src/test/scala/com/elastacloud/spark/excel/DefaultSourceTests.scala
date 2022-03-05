@@ -17,7 +17,7 @@
 package com.elastacloud.spark.excel
 
 import org.apache.spark.sql.SparkSession
-import org.apache.spark.sql.types.{DoubleType, StringType, StructField, StructType}
+import org.apache.spark.sql.types._
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -138,6 +138,26 @@ class DefaultSourceTests extends AnyFlatSpec with Matchers with BeforeAndAfterAl
       .load(inputPath)
 
     df.count() should be(3)
+    df.schema should equal(dataSchema)
+  }
+
+  it should "apply the schema for basic non-native Excel data types" in {
+    val inputPath = testFilePath("/Parser/CalculatedData.xlsx")
+
+    val dataSchema = StructType(Array(
+      StructField("Col_A", IntegerType, nullable = true),
+      StructField("Col_B", DateType, nullable = true),
+      StructField("Col_C", FloatType, nullable = true),
+      StructField("Col_D", DateType, nullable = true),
+      StructField("Col_E", DoubleType, nullable = true)
+    ))
+
+    val df = spark.read
+      .format("com.elastacloud.spark.excel")
+      .schema(dataSchema)
+      .load(inputPath)
+
+    df.count() should be(10)
     df.schema should equal(dataSchema)
   }
 

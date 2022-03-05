@@ -8,6 +8,9 @@ write data sources using the
 Spark [DataSourceV2](https://spark.apache.org/docs/latest/api/java/org/apache/spark/sql/sources/v2/DataSourceV2.html)
 APIs. This is based on the [Apache POI](https://poi.apache.org/) library which provides the means to read Excel files.
 
+_N.B._ This project is only intended as a reader and is opinionated about this. There are no plans to implement writer
+functionality into the project.
+
 ## Important
 
 This repository makes use of [Git-LFS](https://git-lfs.github.com/) to track the Excel files for unit tests. This allows
@@ -47,9 +50,9 @@ val df = spark.read
 ```python
 # Python
 df = spark.read
-    .format("com.elastacloud.spark.excel")
-    .option("cellAddress", "A1")
-    .load("/path/to/my_file.xlsx")
+.format("com.elastacloud.spark.excel")
+.option("cellAddress", "A1")
+.load("/path/to/my_file.xlsx")
 ```
 
 A short name has been provided for convenience, as well as convenience method (Scala only currently).
@@ -95,12 +98,12 @@ maxRowCount      | Int     | 1000    | Number of records to read to infer the sc
 ```scala
 val df = spark.read
   .format("com.elastacloud.spark.excel")
-  .option("cellAddress", "C3")                 // The first line of the table starts at cell C3
-  .option("headerRowCount", 2)                 // The first 2 lines of the table make up the header row
-  .option("includeSheetName", value = true)    // Include the sheet name(s) the data has come from
-  .option("workbookPassword", "AP@55w0rd")     // Use this password to open the workbook with
+  .option("cellAddress", "C3") // The first line of the table starts at cell C3
+  .option("headerRowCount", 2) // The first 2 lines of the table make up the header row
+  .option("includeSheetName", value = true) // Include the sheet name(s) the data has come from
+  .option("workbookPassword", "AP@55w0rd") // Use this password to open the workbook with
   .option("sheetNamePattern", """Sheet[13]""") // Read data from all sheets matching this pattern (e.g. Sheet1 and Sheet3)
-  .option("maxRowCount", 10)                    // Read only the first 10 records to determine the schema of the data
+  .option("maxRowCount", 10) // Read only the first 10 records to determine the schema of the data
   .load("/path/to/file.xlsx")
 ```
 
@@ -142,8 +145,9 @@ set.
 If, for example, you wanted to include sheet names for the next 3 years (assuming the year is currently 2021) then you
 could provide a pattern of `202[234]`. This would ignore any sheets for other years, summary sheets etc...
 
-Often when using this option it is useful to include the sheet name so that the original context is not lost, in the same
-way you might want to include the source file name when reading from multiple files. And so the code might read like.
+Often when using this option it is useful to include the sheet name so that the original context is not lost, in the
+same way you might want to include the source file name when reading from multiple files. And so the code might read
+like.
 
 ```scala
 val df = spark.read
