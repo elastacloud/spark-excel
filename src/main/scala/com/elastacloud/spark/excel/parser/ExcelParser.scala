@@ -17,6 +17,7 @@
 package com.elastacloud.spark.excel.parser
 
 import com.elastacloud.spark.excel.ExcelParserOptions
+import com.elastacloud.spark.excel.parser.ExcelParser.providersAdded
 import org.apache.poi.hssf.usermodel.HSSFWorkbookFactory
 import org.apache.poi.openxml4j.util.ZipSecureFile
 import org.apache.poi.ss.usermodel._
@@ -43,9 +44,13 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
 
     // Use synchronized to prevent concurrency issues in tests
     this.synchronized {
-      for (elem <- types) {
-        WorkbookFactory.removeProvider(elem.getClass)
-        WorkbookFactory.addProvider(elem)
+      // Use the flag so that this is only done one time
+      if (!providersAdded) {
+        for (elem <- types) {
+          WorkbookFactory.removeProvider(elem.getClass)
+          WorkbookFactory.addProvider(elem)
+        }
+        providersAdded = true
       }
     }
 
@@ -386,6 +391,13 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
 }
 
 object ExcelParser {
+  /**
+   * Flag to determine if the Excel workbook factory providers have been added. This is typically not required
+   * in deployed scenarios, but the unit tests become unstable without it and the logic in the class. And we
+   * all love working unit tests.
+   */
+  private var providersAdded = false
+
   /**
    * Read the schema from an Excel workbook based on user defined [[ExcelParserOptions]]
    *
