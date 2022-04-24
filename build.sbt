@@ -40,15 +40,6 @@ artifactName := { (_: ScalaVersion, _: ModuleID, artifact: Artifact) =>
   s"${artifact.name}-${(ThisBuild / version).value}.${artifact.extension}"
 }
 
-publishMavenStyle := true
-publishTo := Some("Github Elastacloud Apache Maven Projects" at "https://maven.pkg.github.com/elastacloud/spark-excel")
-credentials += Credentials(
-  "GitHub Package Registry",
-  "maven.pkg.github.com",
-  "elastacloud",
-  System.getenv("GITHUB_TOKEN")
-)
-
 target := file("target") / s"spark-${sparkVersion.value}"
 
 // Add Spark and POI dependencies
@@ -60,7 +51,7 @@ libraryDependencies ++= Seq(
   "org.apache.poi" % "poi-ooxml-lite" % poiVersion.value % Compile,
   "org.apache.commons" % "commons-compress" % "1.21" % Compile,
   "org.apache.commons" % "commons-collections4" % "4.4" % Compile,
-  "commons-io" % "commons-io" % "2.8.0" % Compile
+  "commons-io" % "commons-io" % "2.11.0" % Compile
 )
 
 // Setup test dependencies and configuration
@@ -126,7 +117,7 @@ val commonSettings = Seq(
       "2.12.14"
     }
   },
-  scalaTestVersion := "3.2.9",
-  poiVersion := "5.2.0",
+  scalaTestVersion := "3.2.11",
+  poiVersion := "5.2.2",
   crossVersion := CrossVersion.disabled
 )
