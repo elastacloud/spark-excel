@@ -19,7 +19,7 @@ package com.elastacloud.spark.excel.parser
 import com.elastacloud.spark.excel.ExcelParserOptions
 import com.elastacloud.spark.excel.parser.ExcelParser.providersAdded
 import org.apache.poi.hssf.usermodel.HSSFWorkbookFactory
-import org.apache.poi.openxml4j.util.ZipSecureFile
+import org.apache.poi.openxml4j.util.{ZipInputStreamZipEntrySource, ZipSecureFile}
 import org.apache.poi.ss.usermodel._
 import org.apache.poi.ss.util.CellAddress
 import org.apache.poi.xssf.usermodel.XSSFWorkbookFactory
@@ -55,6 +55,8 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
     }
 
     ZipSecureFile.setMinInflateRatio(0)
+    ZipInputStreamZipEntrySource.setThresholdBytesForTempFiles(options.maxBytesForTempFiles)
+
     options.workbookPassword match {
       case Some(password) => WorkbookFactory.create(inputStream, password)
       case _ => WorkbookFactory.create(inputStream)

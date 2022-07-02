@@ -37,7 +37,8 @@ private[excel] case class ExcelParserOptions(workbookPassword: Option[String] = 
                                              cellAddress: String = "A1",
                                              headerRowCount: Int = 1,
                                              maxRowCount: Int = 1000,
-                                             includeSheetName: Boolean = false)
+                                             includeSheetName: Boolean = false,
+                                             maxBytesForTempFiles: Int = 100000000)
 
 private[excel] object ExcelParserOptions {
   private val encoder = new DoubleMetaphone()
@@ -51,7 +52,8 @@ private[excel] object ExcelParserOptions {
     encoder.encode("cellAddress") -> "cellAddress",
     encoder.encode("headerRowCount") -> "headerRowCount",
     encoder.encode("maxRowCount") -> "maxRowCount",
-    encoder.encode("includeSheetName") -> "includeSheetName"
+    encoder.encode("includeSheetName") -> "includeSheetName",
+    encoder.encode("maxBytesForTempFiles") -> "maxBytesForTempFiles",
   )
 
   /**
@@ -97,7 +99,8 @@ private[excel] object ExcelParserOptions {
       options.getOrDefault("cellAddress", "A1"),
       options.getInt("headerRowCount", 1),
       options.getInt("maxRowCount", 1000),
-      options.getBoolean("includeSheetName", false)
+      options.getBoolean("includeSheetName", false),
+      options.getInt("maxBytesForTempFiles", 100000000)
     )
   }
 
@@ -125,7 +128,8 @@ private[excel] object ExcelParserOptions {
       options.getOrElse("cellAddress", "A1"),
       options.getOrElse("headerRowCount", "1").toInt,
       options.getOrElse("maxRowCount", "1000").toInt,
-      options.getOrElse("includeSheetName", "false").toBoolean
+      options.getOrElse("includeSheetName", "false").toBoolean,
+      options.getOrElse("maxBytesForTempFiles", "100000000").toInt
     )
   }
 }
