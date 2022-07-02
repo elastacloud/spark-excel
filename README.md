@@ -86,14 +86,15 @@ val globFileDF = spark.read
 
 The library supports the following options:
 
-Option           | Type    | Default | Description
----------------- | ------- | ------- | -----------
-cellAddress      | String  | A1      | Location of the first cell of the table (including header)
-headerRowCount   | Int     | 1       | Number of rows which make up the header. If no header is available then set this value to 0 (zero)
-includeSheetName | Boolean | False   | Includes the name of the worksheet the data has come from when set to true. Uses the column `_SheetName`
-workbookPassword | String  | _Empty_ | Password required to open Excel workbook
-sheetNamePattern | String  | _Empty_ | Regular expression to use to match worksheet names
-maxRowCount      | Int     | 1000    | Number of records to read to infer the schema. If set to 0 (zero) then all available rows will be read
+Option               | Type    | Default  | Description
+-------------------- | ------- | -------- | -----------
+cellAddress          | String  | A1       | Location of the first cell of the table (including header)
+headerRowCount       | Int     | 1        | Number of rows which make up the header. If no header is available then set this value to 0 (zero)
+includeSheetName     | Boolean | False    | Includes the name of the worksheet the data has come from when set to true. Uses the column `_SheetName`
+workbookPassword     | String  | _Empty_  | Password required to open Excel workbook
+sheetNamePattern     | String  | _Empty_  | Regular expression to use to match worksheet names
+maxRowCount          | Int     | 1000     | Number of records to read to infer the schema. If set to 0 (zero) then all available rows will be read
+maxBytesForTempFiles | Int     | 10000000 | Sets the number of bytes at which a workbook is (ooxml format) is regarded as too large to hold in memory and the data is put into temp files instead. Whilst the cluster may have large volumes of memory, the node processing the file will be limited.
 
 ```scala
 val df = spark.read
@@ -104,6 +105,7 @@ val df = spark.read
   .option("workbookPassword", "AP@55w0rd") // Use this password to open the workbook with
   .option("sheetNamePattern", """Sheet[13]""") // Read data from all sheets matching this pattern (e.g. Sheet1 and Sheet3)
   .option("maxRowCount", 10) // Read only the first 10 records to determine the schema of the data
+  .option("maxBytesForTempFiles", 50000000) // Set size limit before temp files are used
   .load("/path/to/file.xlsx")
 ```
 
