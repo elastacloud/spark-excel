@@ -55,7 +55,7 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
     }
 
     ZipSecureFile.setMinInflateRatio(0)
-    ZipInputStreamZipEntrySource.setThresholdBytesForTempFiles(options.maxBytesForTempFiles)
+    ZipInputStreamZipEntrySource.setThresholdBytesForTempFiles(options.thresholdBytesForTempFiles)
 
     options.workbookPassword match {
       case Some(password) => WorkbookFactory.create(inputStream, password)
