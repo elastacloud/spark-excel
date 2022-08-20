@@ -32,6 +32,14 @@ developers += Developer(id = "dazfuller", name = "Darren Fuller", email = "darre
 scmInfo := Some(ScmInfo(url("https://github.com/elastacloud/spark-excel"), "git@github.com:elastacloud/spark-excel.git"))
 licenses += ("Apache License, Version 2.0", url("https://www.apache.org/licenses/LICENSE-2.0"))
 
+Compile / unmanagedSourceDirectories ++= {
+  if (sparkVersion.value < "3.3.0") {
+    Seq(baseDirectory.value / "src/main/3.0/scala")
+  } else {
+    Seq(baseDirectory.value / "src/main/3.3/scala")
+  }
+}
+
 Compile / packageBin / publishArtifact := false
 Compile / packageDoc / publishArtifact := false
 Compile / packageSrc / publishArtifact := false
@@ -107,7 +115,7 @@ addArtifact(Compile / assembly / artifact, assembly)
 
 // Define common settings for the library
 val commonSettings = Seq(
-  sparkVersion := System.getProperty("sparkVersion", "3.2.1"),
+  sparkVersion := System.getProperty("sparkVersion", "3.3.0"),
   sparkExcelVersion := "0.1.10-SNAPSHOT",
   version := s"${sparkVersion.value}_${sparkExcelVersion.value}",
   scalaVersion := {
