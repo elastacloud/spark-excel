@@ -38,7 +38,7 @@ private[excel] case class ExcelParserOptions(workbookPassword: Option[String] = 
                                              headerRowCount: Int = 1,
                                              maxRowCount: Int = 1000,
                                              includeSheetName: Boolean = false,
-                                             maxBytesForTempFiles: Int = 100000000)
+                                             thresholdBytesForTempFiles: Int = 100000000)
 
 private[excel] object ExcelParserOptions {
   private val encoder = new DoubleMetaphone()
@@ -54,11 +54,13 @@ private[excel] object ExcelParserOptions {
     encoder.encode("maxRowCount") -> "maxRowCount",
     encoder.encode("includeSheetName") -> "includeSheetName",
     encoder.encode("maxBytesForTempFiles") -> "maxBytesForTempFiles",
+    encoder.encode("thresholdBytesForTempFiles") -> "thresholdBytesForTempFiles"
   )
 
   /**
    * Checks the provided set of keys for invalid options and attempts to match again
    * valid options.
+   *
    * @param keys collection of keys to valid
    * @return An [[Option]] containing a string if there are errors, or [[None]]
    */
@@ -93,6 +95,8 @@ private[excel] object ExcelParserOptions {
       None
     }
 
+    val thresholdBytesForTempFiles = options.getInt("thresholdBytesForTempFiles", options.getInt("maxBytesForTempFiles", 100000000))
+
     ExcelParserOptions(
       worksheetPassword,
       options.getOrDefault("sheetNamePattern", ""),
@@ -100,7 +104,7 @@ private[excel] object ExcelParserOptions {
       options.getInt("headerRowCount", 1),
       options.getInt("maxRowCount", 1000),
       options.getBoolean("includeSheetName", false),
-      options.getInt("maxBytesForTempFiles", 100000000)
+      thresholdBytesForTempFiles
     )
   }
 
@@ -122,6 +126,8 @@ private[excel] object ExcelParserOptions {
       None
     }
 
+    val thresholdBytesForTempFiles = options.getOrElse("thresholdBytesForTempFiles", options.getOrElse("maxBytesForTempFiles", "100000000"))
+
     ExcelParserOptions(
       worksheetPassword,
       options.getOrElse("sheetNamePattern", ""),
@@ -129,7 +135,7 @@ private[excel] object ExcelParserOptions {
       options.getOrElse("headerRowCount", "1").toInt,
       options.getOrElse("maxRowCount", "1000").toInt,
       options.getOrElse("includeSheetName", "false").toBoolean,
-      options.getOrElse("maxBytesForTempFiles", "100000000").toInt
+      thresholdBytesForTempFiles.toInt
     )
   }
 }

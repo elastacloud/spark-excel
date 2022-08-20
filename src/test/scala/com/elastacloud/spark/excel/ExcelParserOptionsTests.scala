@@ -16,7 +16,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.headerRowCount should be(1)
     options.maxRowCount should be(1000)
     options.includeSheetName should be(false)
-    options.maxBytesForTempFiles should be(100000000)
+    options.thresholdBytesForTempFiles should be(100000000)
   }
 
   "Creating from a case insensitive map" should "use default values for an empty map" in {
@@ -30,7 +30,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.headerRowCount should be(1)
     options.maxRowCount should be(1000)
     options.includeSheetName should be(false)
-    options.maxBytesForTempFiles should be(100000000)
+    options.thresholdBytesForTempFiles should be(100000000)
   }
 
   it should "extract values from the map" in {
@@ -52,7 +52,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.headerRowCount should be(12)
     options.maxRowCount should be(2000)
     options.includeSheetName should be(true)
-    options.maxBytesForTempFiles should be(10)
+    options.thresholdBytesForTempFiles should be(10)
   }
 
   it should "provide useful error information if options are slightly mis-spelt" in {
@@ -87,6 +87,27 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.workbookPassword should be(None)
   }
 
+  it should "use thresholdBytesForTempFiles if maxBytesForTempFiles is not provided" in {
+    val input = new CaseInsensitiveStringMap(Map[String, String](
+      "thresholdBytesForTempFiles" -> "100"
+    ).asJava)
+
+    val options = ExcelParserOptions.from(input)
+
+    options.thresholdBytesForTempFiles should be(100)
+  }
+
+  it should "use thresholdBytesForTempFiles if maxBytesForTempFiles is alo specified" in {
+    val input = new CaseInsensitiveStringMap(Map[String, String](
+      "thresholdBytesForTempFiles" -> "100",
+      "maxBytesForTempFiles" -> "120"
+    ).asJava)
+
+    val options = ExcelParserOptions.from(input)
+
+    options.thresholdBytesForTempFiles should be(100)
+  }
+
   "Creating from a string map" should "use default values for an empty map" in {
     val input = Map[String, String]()
 
@@ -98,7 +119,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.headerRowCount should be(1)
     options.maxRowCount should be(1000)
     options.includeSheetName should be(false)
-    options.maxBytesForTempFiles should be(100000000)
+    options.thresholdBytesForTempFiles should be(100000000)
   }
 
   it should "extract values from the map" in {
@@ -120,6 +141,27 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.headerRowCount should be(12)
     options.maxRowCount should be(2000)
     options.includeSheetName should be(true)
-    options.maxBytesForTempFiles should be(100)
+    options.thresholdBytesForTempFiles should be(100)
+  }
+
+  it should "use thresholdBytesForTempFiles if maxBytesForTempFiles is not provided" in {
+    val input = Map[String, String](
+      "thresholdBytesForTempFiles" -> "100"
+    )
+
+    val options = ExcelParserOptions.from(input)
+
+    options.thresholdBytesForTempFiles should be(100)
+  }
+
+  it should "use thresholdBytesForTempFiles if maxBytesForTempFiles is alo specified" in {
+    val input = Map[String, String](
+      "thresholdBytesForTempFiles" -> "100",
+      "maxBytesForTempFiles" -> "120"
+    )
+
+    val options = ExcelParserOptions.from(input)
+
+    options.thresholdBytesForTempFiles should be(100)
   }
 }
