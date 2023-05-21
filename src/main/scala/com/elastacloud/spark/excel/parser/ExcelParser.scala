@@ -113,7 +113,7 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
    *
    * @return the schema as a [[StructType]] value
    */
-  def readOutputSchema(): StructType = readSchema match {
+  private def readOutputSchema(): StructType = readSchema match {
     case None => readDataSchema()
     case Some(s) => s
   }
@@ -139,6 +139,19 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
     private var currentDataRow: Int = _
     private val lastColumnIndex = firstCellAddress.getColumn + readDataSchema().length
     private val outputFields = readOutputSchema().map(f => f.name)
+
+    // Check if the schema match column name exists
+    if (options.schemaMatchColumnName != null && !outputFields.exists(_.equalsIgnoreCase(options.schemaMatchColumnName))) {
+      throw new ExcelParserException("The specified schema match column does not exist within the schema.")
+    }
+
+    // Check that the data type of the schema match column is correct
+    if (options.schemaMatchColumnName != null) {
+      val schemaMatchField = readOutputSchema().filter(_.name.equalsIgnoreCase(options.schemaMatchColumnName)).head
+      if (schemaMatchField.dataType != BooleanType) {
+        throw new ExcelParserException("The specified schema match column is not defined as a boolean type.")
+      }
+    }
 
     /**
      * Identifies if the iterator contains more values
@@ -182,11 +195,14 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
      */
     override def next(): Seq[Any] = {
       val currentRow = currentSheet.getRow(currentDataRow)
+      var rowMatchesSchema = true
       // If the data row does not exist then return a row of null values
       val rowData = if (currentRow == null) {
         firstCellAddress.getColumn.until(lastColumnIndex).zipWithIndex.map { case (_, i) =>
           if (readDataSchema()(i).name == sheetFieldName && options.includeSheetName) {
             checkOutput(currentSheetName, readDataSchema()(i).name)
+          } else if (options.schemaMatchColumnName != null && readDataSchema()(i).name == options.schemaMatchColumnName) {
+            checkOutput(false, readDataSchema()(i).name)
           } else {
             checkOutput(null, readDataSchema()(i).name)
           }
@@ -195,17 +211,23 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
         firstCellAddress.getColumn.until(lastColumnIndex).zipWithIndex.map { case (columnIndex, i) =>
           if (readDataSchema()(i).name == sheetFieldName && options.includeSheetName) {
             checkOutput(currentSheetName, readDataSchema()(i).name)
+          } else if (options.schemaMatchColumnName != null && readDataSchema()(i).name == options.schemaMatchColumnName) {
+            checkOutput(rowMatchesSchema, readDataSchema()(i).name)
           } else {
             val cell = currentRow.getCell(columnIndex, Row.MissingCellPolicy.RETURN_NULL_AND_BLANK)
             val cellValue = if (cell == null) {
-              null
+              (null, readDataSchema()(i).nullable)
             } else {
               val currentCell = getMergedCell(cell)
               val targetType = readDataSchema()(i).dataType
-              getCellValue(currentCell, targetType)
+              getCellValue(currentCell, targetType, readDataSchema()(i).nullable)
             }
 
-            checkOutput(cellValue, readDataSchema()(i).name)
+            if (!cellValue._2) {
+              rowMatchesSchema = false
+            }
+
+            checkOutput(cellValue._1, readDataSchema()(i).name)
           }
         }
       }
@@ -228,50 +250,52 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
     /**
      * Gets the cell value from the worksheet and formats to match the target type
      *
-     * @param cell       the cell to copy data from
-     * @param targetType the type of the spark field where the data will be parsed to
-     * @return the cell value targeting the destination type
+     * @param cell           the cell to copy data from
+     * @param targetType     the type of the spark field where the data will be parsed to
+     * @param targetNullable indicates if the field in the target schema allows null values
+     * @return the cell value targeting the destination type, and a boolean flag indicating if the cell value matches
+     *         the target schema
      */
-    private def getCellValue(cell: Cell, targetType: DataType): Any = {
+    private def getCellValue(cell: Cell, targetType: DataType, targetNullable: Boolean): (Any, Boolean) = {
       val currentCell = getMergedCell(cell)
 
       val invalidCellTypes = Seq(CellType._NONE, CellType.BLANK, CellType.ERROR)
 
       if (currentCell == null || invalidCellTypes.contains(currentCell.getCellType)) {
-        return null
+        return (null, targetNullable)
       }
 
       val currentCellValue = formulaEvaluator.evaluate(currentCell)
       currentCellValue.getCellType match {
-        case CellType._NONE | CellType.BLANK | CellType.ERROR => null
+        case CellType._NONE | CellType.BLANK | CellType.ERROR => (null, targetNullable)
         case CellType.BOOLEAN => targetType match {
-          case _: StringType => UTF8String.fromString(currentCellValue.getBooleanValue.toString)
-          case _: BooleanType => currentCellValue.getBooleanValue
-          case _ => null
+          case _: StringType => (UTF8String.fromString(currentCellValue.getBooleanValue.toString), true)
+          case _: BooleanType => (currentCellValue.getBooleanValue, true)
+          case _ => (null, false)
         }
         case CellType.NUMERIC => targetType match {
           case _: StringType => if (DateUtil.isCellDateFormatted(currentCell)) {
-            UTF8String.fromString(DateUtil.getLocalDateTime(currentCellValue.getNumberValue).format(DateTimeFormatter.ISO_DATE_TIME))
+            (UTF8String.fromString(DateUtil.getLocalDateTime(currentCellValue.getNumberValue).format(DateTimeFormatter.ISO_DATE_TIME)), true)
           } else {
-            UTF8String.fromString(currentCellValue.getNumberValue.toString)
+            (UTF8String.fromString(currentCellValue.getNumberValue.toString), true)
           }
           case _: TimestampType if DateUtil.isCellDateFormatted(currentCell) =>
             val ts = Timestamp.valueOf(DateUtil.getLocalDateTime(currentCellValue.getNumberValue))
-            DateTimeUtils.fromJavaTimestamp(ts)
+            (DateTimeUtils.fromJavaTimestamp(ts), true)
           case _: DateType if DateUtil.isCellDateFormatted(currentCell) =>
             val ts = Timestamp.valueOf(DateUtil.getLocalDateTime(currentCellValue.getNumberValue))
-            DateTimeUtils.fromJavaDate(Date.valueOf(ts.toLocalDateTime.toLocalDate))
-          case _: IntegerType => currentCellValue.getNumberValue.toInt
-          case _: LongType => currentCellValue.getNumberValue.toLong
-          case _: FloatType => currentCellValue.getNumberValue.toFloat
-          case _: DoubleType => currentCellValue.getNumberValue
-          case _ => null
+            (DateTimeUtils.fromJavaDate(Date.valueOf(ts.toLocalDateTime.toLocalDate)), true)
+          case _: IntegerType => (currentCellValue.getNumberValue.toInt, true)
+          case _: LongType => (currentCellValue.getNumberValue.toLong, true)
+          case _: FloatType => (currentCellValue.getNumberValue.toFloat, true)
+          case _: DoubleType => (currentCellValue.getNumberValue, true)
+          case _ => (null, false)
         }
         case CellType.STRING => targetType match {
-          case _: StringType => UTF8String.fromString(currentCellValue.getStringValue)
-          case _ => null
+          case _: StringType => (UTF8String.fromString(currentCellValue.getStringValue), true)
+          case _ => (null, false)
         }
-        case _ => UTF8String.fromString(currentCellValue.toString)
+        case _ => (UTF8String.fromString(currentCellValue.toString), true)
       }
     }
   }
@@ -379,6 +403,13 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
 
     if (options.includeSheetName) {
       fields = fields :+ StructField(sheetFieldName, StringType, nullable = false)
+    }
+
+    if (options.schemaMatchColumnName != null) {
+      if (fields.exists(f => f.name.equalsIgnoreCase(options.schemaMatchColumnName))) {
+        throw new ExcelParserException("The specified schema match column conflicts with a column of the same name in the data set.")
+      }
+      fields = fields :+ StructField(options.schemaMatchColumnName, BooleanType, nullable = false)
     }
 
     StructType(fields)

@@ -432,4 +432,127 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
       firstRow should equal(expectedData)
     }
   }
+
+  "Specifying a schema match column" should "add the column to the inferred schema" in {
+    withInputStream("/Parser/SimpleWorkbook.xlsx") { inputStream =>
+      val options = ExcelParserOptions(cellAddress = "B1", schemaMatchColumnName = "_isValid")
+
+      val expectedSchema = StructType(Array(
+        StructField("Col2", DoubleType, nullable = true),
+        StructField("Col3", StringType, nullable = true),
+        StructField("_isValid", BooleanType, nullable = false)
+      ))
+
+      val expectedData = Seq(
+        Vector[Any](1D, "x".asUnsafe, true),
+        Vector[Any](2D, "y".asUnsafe, true),
+        Vector[Any](3D, "z".asUnsafe, true)
+      )
+
+      val parser = new ExcelParser(inputStream, options)
+      val actualData = parser.getDataIterator.toList
+
+      parser.readDataSchema() should equal(expectedSchema)
+      actualData should equal(expectedData)
+    }
+  }
+
+  it should "throw an exception if the specified name exists in the data set" in {
+    withInputStream("/Parser/SimpleWorkbook.xlsx") { inputStream =>
+      val options = ExcelParserOptions(schemaMatchColumnName = "Col3")
+
+      val parser = new ExcelParser(inputStream, options)
+
+      the[ExcelParserException] thrownBy parser.readDataSchema() should have message "The specified schema match column conflicts with a column of the same name in the data set."
+    }
+  }
+
+  it should "flag rows as false if the data types do not match the inferred schema" in {
+    withInputStream("/Parser/VaryingTypes.xlsx") { inputStream =>
+      // Limit the row count so that it doesn't infer based on the string row
+      val options = ExcelParserOptions(maxRowCount = 3, schemaMatchColumnName = "ValidRow")
+
+      val expectedSchema = StructType(Array(
+        StructField("Item", StringType, nullable = true),
+        StructField("2010_0", DoubleType, nullable = true),
+        StructField("2011_0", DoubleType, nullable = true),
+        StructField("ValidRow", BooleanType, nullable = false)
+      ))
+
+      val expectedData = Seq(
+        Vector[Any]("Item 1".asUnsafe, 99.4, 99.4, true),
+        Vector[Any]("Item 2".asUnsafe, 12.4, 12.4, true),
+        Vector[Any]("Item 3".asUnsafe, 74.2, 74.2, true),
+        Vector[Any]("Item 4".asUnsafe, 36.8, 36.8, true),
+        Vector[Any]("Item 5".asUnsafe, 24.2, 24.2, true),
+        Vector[Any]("Item 6".asUnsafe, 11.6, 11.6, true),
+        Vector[Any]("Header Items".asUnsafe, null, null, false),
+        Vector[Any]("Item 12".asUnsafe, 99.2, 99.2, true),
+        Vector[Any]("Item 13".asUnsafe, 18.4, 18.4, true),
+        Vector[Any]("Item 14".asUnsafe, 12.3, 12.3, true)
+      )
+
+      val parser = new ExcelParser(inputStream, options)
+      parser.readDataSchema() should equal(expectedSchema)
+      parser.getDataIterator.toList should equal(expectedData)
+    }
+  }
+
+  it should "use the provided field when a schema is provided" in {
+    withInputStream("/Parser/SimpleWorkbook.xlsx") { inputStream =>
+      val options = ExcelParserOptions(schemaMatchColumnName = "MatchesSchema")
+
+      val schema = new StructType(Array(
+        StructField("Col1", StringType, nullable = false),
+        StructField("Col2", IntegerType, nullable = false),
+        StructField("Col3", DoubleType, nullable = false),
+        StructField("MatchesSchema", BooleanType, nullable = false)
+      ))
+
+      val expectedData = Seq(
+        Vector[Any]("a".asUnsafe, 1, null, false),
+        Vector[Any]("b".asUnsafe, 2, null, false),
+        Vector[Any]("c".asUnsafe, 3, null, false)
+      )
+
+      val parser = new ExcelParser(inputStream, options, schema = Some(schema))
+      val actualData = parser.getDataIterator.toList
+
+      actualData should equal(expectedData)
+    }
+  }
+
+  it should "throw an error if the option column name is not in the schema" in {
+    withInputStream("/Parser/SimpleWorkbook.xlsx") { inputStream =>
+      val options = ExcelParserOptions(schemaMatchColumnName = "MatchesSchema")
+
+      val schema = new StructType(Array(
+        StructField("Col1", StringType, nullable = false),
+        StructField("Col2", IntegerType, nullable = false),
+        StructField("Col3", DoubleType, nullable = false),
+        StructField("_isValid", BooleanType, nullable = false)
+      ))
+
+      val parser = new ExcelParser(inputStream, options, schema = Some(schema))
+
+      the[ExcelParserException] thrownBy parser.getDataIterator.toList should have message "The specified schema match column does not exist within the schema."
+    }
+  }
+
+  it should "throw an error if the option column name is not of the correct data type" in {
+    withInputStream("/Parser/SimpleWorkbook.xlsx") { inputStream =>
+      val options = ExcelParserOptions(schemaMatchColumnName = "_isValid")
+
+      val schema = new StructType(Array(
+        StructField("Col1", StringType, nullable = false),
+        StructField("Col2", IntegerType, nullable = false),
+        StructField("Col3", DoubleType, nullable = false),
+        StructField("_isValid", LongType, nullable = true)
+      ))
+
+      val parser = new ExcelParser(inputStream, options, schema = Some(schema))
+
+      the[ExcelParserException] thrownBy parser.getDataIterator.toList should have message "The specified schema match column is not defined as a boolean type."
+    }
+  }
 }
