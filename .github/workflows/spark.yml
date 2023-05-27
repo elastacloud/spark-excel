@@ -40,7 +40,7 @@ jobs:
           env_vars: ${{ matrix.sparkVersion }}
           fail_ci_if_error: true
           name: spark-excel
-          path_to_write_report: ./target/spark-${{ matrix.sparkVersion }}/scala-2.12/coverage-report/codecov_report.txt
+          # path_to_write_report: ./target/spark-${{ matrix.sparkVersion }}/scala-2.12/coverage-report/codecov_report.txt
           verbose: true
 
       - name: Create assembly
@@ -49,7 +49,7 @@ jobs:
 
       - name: Upload the package
         if: ${{ github.event_name != 'pull_request' }}
-        uses: actions/upload-artifact@v2.2.4
+        uses: actions/upload-artifact@v3.1.2
         with:
           path: ./target/spark-${{ matrix.sparkVersion }}/scala-2.12/spark-excel*.jar
           if-no-files-found: warn
