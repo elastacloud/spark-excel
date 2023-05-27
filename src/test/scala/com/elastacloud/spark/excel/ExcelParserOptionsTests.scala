@@ -17,6 +17,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.maxRowCount should be(1000)
     options.includeSheetName should be(false)
     options.thresholdBytesForTempFiles should be(100000000)
+    options.schemaMatchColumnName should be(null)
   }
 
   "Creating from a case insensitive map" should "use default values for an empty map" in {
@@ -31,6 +32,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.maxRowCount should be(1000)
     options.includeSheetName should be(false)
     options.thresholdBytesForTempFiles should be(100000000)
+    options.schemaMatchColumnName should be(null)
   }
 
   it should "extract values from the map" in {
@@ -41,7 +43,8 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
       "headerRowCount" -> "12",
       "maxRowCount" -> "2000",
       "includeSheetName" -> "true",
-      "maxBytesForTempFiles" -> "10"
+      "maxBytesForTempFiles" -> "10",
+      "schemaMatchColumnName" -> "_isValid"
     ).asJava)
 
     val options = ExcelParserOptions.from(input)
@@ -53,6 +56,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.maxRowCount should be(2000)
     options.includeSheetName should be(true)
     options.thresholdBytesForTempFiles should be(10)
+    options.schemaMatchColumnName should be("_isValid")
   }
 
   it should "provide useful error information if options are slightly mis-spelt" in {
@@ -63,7 +67,8 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
       "headerCount" -> "12",
       "maxRowCont" -> "2000",
       "includShetNam" -> "true",
-      "macsBitesTempFiles" -> "10"
+      "macsBitesTempFiles" -> "10",
+      "schemaMatchColumName" -> "_isValid"
     ).asJava)
 
     val exception = the[ExcelParserOptionsException] thrownBy ExcelParserOptions.from(input)
@@ -74,7 +79,8 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     exception.getMessage.contains("Invalid option 'headercount', did you mean 'headerRowCount'?") should be(true)
     exception.getMessage.contains("Invalid option 'maxrowcont', did you mean 'maxRowCount'?") should be(true)
     exception.getMessage.contains("Invalid option 'includshetnam', did you mean 'includeSheetName'?") should be(true)
-    exception.getMessage.contains("Invalid options 'macsBitesTempFiles', did you mean 'maxBytesForTempFiles'")
+    exception.getMessage.contains("Invalid option 'macsbitestempfiles', did you mean 'maxBytesForTempFiles'") should be(true)
+    exception.getMessage.contains("Invalid option 'schemamatchcolumname', did you mean 'schemaMatchColumnName'") should be(true)
   }
 
   it should "ignore options which are invalid and not close in spelling to valid options" in {
@@ -120,6 +126,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.maxRowCount should be(1000)
     options.includeSheetName should be(false)
     options.thresholdBytesForTempFiles should be(100000000)
+    options.schemaMatchColumnName should be(null)
   }
 
   it should "extract values from the map" in {
@@ -130,7 +137,8 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
       "headerRowCount" -> "12",
       "maxRowCount" -> "2000",
       "includeSheetName" -> "true",
-      "maxBytesForTempFiles" -> "100"
+      "maxBytesForTempFiles" -> "100",
+      "schemaMatchColumnName" -> "_isValid"
     )
 
     val options = ExcelParserOptions.from(input)
@@ -142,6 +150,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.maxRowCount should be(2000)
     options.includeSheetName should be(true)
     options.thresholdBytesForTempFiles should be(100)
+    options.schemaMatchColumnName should be("_isValid")
   }
 
   it should "use thresholdBytesForTempFiles if maxBytesForTempFiles is not provided" in {

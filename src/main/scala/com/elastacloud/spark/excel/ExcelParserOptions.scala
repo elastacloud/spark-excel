@@ -38,7 +38,9 @@ private[excel] case class ExcelParserOptions(workbookPassword: Option[String] = 
                                              headerRowCount: Int = 1,
                                              maxRowCount: Int = 1000,
                                              includeSheetName: Boolean = false,
-                                             thresholdBytesForTempFiles: Int = 100000000)
+                                             thresholdBytesForTempFiles: Int = 100000000,
+                                             schemaMatchColumnName: String = null
+                                            )
 
 private[excel] object ExcelParserOptions {
   private val encoder = new DoubleMetaphone()
@@ -54,7 +56,8 @@ private[excel] object ExcelParserOptions {
     encoder.encode("maxRowCount") -> "maxRowCount",
     encoder.encode("includeSheetName") -> "includeSheetName",
     encoder.encode("maxBytesForTempFiles") -> "maxBytesForTempFiles",
-    encoder.encode("thresholdBytesForTempFiles") -> "thresholdBytesForTempFiles"
+    encoder.encode("thresholdBytesForTempFiles") -> "thresholdBytesForTempFiles",
+    encoder.encode("schemaMatchColumnName") -> "schemaMatchColumnName"
   )
 
   /**
@@ -97,6 +100,11 @@ private[excel] object ExcelParserOptions {
 
     val thresholdBytesForTempFiles = options.getInt("thresholdBytesForTempFiles", options.getInt("maxBytesForTempFiles", 100000000))
 
+    val schemaMatchColumnName = options.getOrDefault("schemaMatchColumnName", null)
+    if (schemaMatchColumnName != null && schemaMatchColumnName.trim.isEmpty) {
+      throw new ExcelParserOptionsException("The 'schemaMatchColumnName' option must contain a value if provided")
+    }
+
     ExcelParserOptions(
       worksheetPassword,
       options.getOrDefault("sheetNamePattern", ""),
@@ -104,7 +112,8 @@ private[excel] object ExcelParserOptions {
       options.getInt("headerRowCount", 1),
       options.getInt("maxRowCount", 1000),
       options.getBoolean("includeSheetName", false),
-      thresholdBytesForTempFiles
+      thresholdBytesForTempFiles,
+      schemaMatchColumnName
     )
   }
 
@@ -128,6 +137,11 @@ private[excel] object ExcelParserOptions {
 
     val thresholdBytesForTempFiles = options.getOrElse("thresholdBytesForTempFiles", options.getOrElse("maxBytesForTempFiles", "100000000"))
 
+    val schemaMatchColumnName = options.getOrElse("schemaMatchColumnName", null)
+    if (schemaMatchColumnName != null && schemaMatchColumnName.trim.isEmpty) {
+      throw new ExcelParserOptionsException("The 'schemaMatchColumnName' option must contain a value if provided")
+    }
+
     ExcelParserOptions(
       worksheetPassword,
       options.getOrElse("sheetNamePattern", ""),
@@ -135,7 +149,8 @@ private[excel] object ExcelParserOptions {
       options.getOrElse("headerRowCount", "1").toInt,
       options.getOrElse("maxRowCount", "1000").toInt,
       options.getOrElse("includeSheetName", "false").toBoolean,
-      thresholdBytesForTempFiles.toInt
+      thresholdBytesForTempFiles.toInt,
+      schemaMatchColumnName
     )
   }
 }
