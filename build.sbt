@@ -35,8 +35,10 @@ licenses += ("Apache License, Version 2.0", url("https://www.apache.org/licenses
 Compile / unmanagedSourceDirectories ++= {
   if (sparkVersion.value < "3.3.0") {
     Seq(baseDirectory.value / "src/main/3.0/scala")
-  } else {
+  } else if (sparkVersion.value < "3.4.0") {
     Seq(baseDirectory.value / "src/main/3.3/scala")
+  } else {
+    Seq(baseDirectory.value / "src/main/3.4/scala")
   }
 }
 
@@ -115,17 +117,19 @@ addArtifact(Compile / assembly / artifact, assembly)
 
 // Define common settings for the library
 val commonSettings = Seq(
-  sparkVersion := System.getProperty("sparkVersion", "3.3.0"),
-  sparkExcelVersion := "0.1.11-SNAPSHOT",
+  sparkVersion := System.getProperty("sparkVersion", "3.4.0"),
+  sparkExcelVersion := "0.1.11",
   version := s"${sparkVersion.value}_${sparkExcelVersion.value}",
   scalaVersion := {
     if (sparkVersion.value < "3.2.0") {
       "2.12.10"
-    } else {
+    } else if (sparkVersion.value < "3.4.0") {
       "2.12.14"
+    } else {
+      "2.12.15"
     }
   },
-  scalaTestVersion := "3.2.11",
+  scalaTestVersion := "3.2.16",
   poiVersion := "5.2.2",
   crossVersion := CrossVersion.disabled
 )

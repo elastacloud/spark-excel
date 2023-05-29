@@ -16,36 +16,66 @@
 
 package com.elastacloud.spark.excel
 
+import com.elastacloud.spark.excel.ExcelParserOptions.checkInvalidOptions
 import org.apache.commons.codec.language.DoubleMetaphone
+import org.apache.spark.internal.Logging
+import org.apache.spark.sql.catalyst.FileSourceOptions
+import org.apache.spark.sql.catalyst.util.CaseInsensitiveMap
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
 
-import scala.collection.convert.ImplicitConversions.`collection AsScalaIterable`
+import scala.collection.convert.ImplicitConversions.`map AsScala`
 import scala.collection.mutable.ArrayBuffer
 
 /**
- * Defines the Excel parser options
- *
- * @param workbookPassword password required to open the workbook
- * @param sheetNamePattern a regex pattern to identify sheets to read data from
- * @param cellAddress      the cell address of the first cell in the data table
- * @param headerRowCount   number of rows in the header
- * @param maxRowCount      maximum number of rows to read when inferring the schema
- * @param includeSheetName identifies if the sheet name should be included in the output
+ * Defines the options used by the Excel parser
+ * @param parameters case insensitive map of parameters to use
  */
-private[excel] case class ExcelParserOptions(workbookPassword: Option[String] = None,
-                                             sheetNamePattern: String = "",
-                                             cellAddress: String = "A1",
-                                             headerRowCount: Int = 1,
-                                             maxRowCount: Int = 1000,
-                                             includeSheetName: Boolean = false,
-                                             thresholdBytesForTempFiles: Int = 100000000)
-
-private[excel] object ExcelParserOptions {
-  private val encoder = new DoubleMetaphone()
+private[excel] class ExcelParserOptions(
+  @transient val parameters: CaseInsensitiveMap[String])
+  extends FileSourceOptions(parameters) with Logging {
 
   /**
-   * Valid parser options and their phonetic values
+   * Defines the options used by the Excel parser
+   * @param parameters map of parameters to use
    */
+  def this(parameters: Map[String, String]) = {
+    this(CaseInsensitiveMap(parameters))
+  }
+
+  /**
+   * Defines the options used by the Excel parser, using the default options
+   */
+  def this() = {
+    this(Map[String, String]())
+  }
+
+  checkInvalidOptions(parameters.keySet) match {
+    case Some(errors) => throw new ExcelParserOptionsException(s"Unable to parse options:\n${errors.mkString("\n")}")
+    case _ =>
+  }
+
+  val workbookPassword: Option[String] = parameters.get("workbookPassword")
+  val sheetNamePattern: String = parameters.getOrElse("sheetNamePattern", "")
+  val cellAddress: String = parameters.getOrElse("cellAddress", "A1")
+  val headerRowCount: Int = parameters.getOrElse("headerRowCount", "1").toInt
+  val maxRowCount: Int = parameters.getOrElse("maxRowCount", "1000").toInt
+  val includeSheetName: Boolean = parameters.getOrElse("includeSheetName", "false").toBoolean
+  val thresholdBytesForTempFiles: Int = parameters.getOrElse("thresholdBytesForTempFiles", parameters.getOrElse("maxBytesForTempFiles", "100000000")).toInt
+
+  val schemaMatchColumnName: String = parameters.getOrElse("schemaMatchColumnName", null)
+  if (schemaMatchColumnName != null && schemaMatchColumnName.trim.isEmpty) {
+    throw new ExcelParserOptionsException("The 'schemaMatchColumnName' option must contain a value if provided")
+  }
+
+}
+
+/**
+ * Provides object methods for the Excel parser options
+ */
+private[excel] object ExcelParserOptions {
+
+  private val encoder = new DoubleMetaphone()
+
   private val mappings = Map[String, String](
     encoder.encode("workbookPassword") -> "workbookPassword",
     encoder.encode("sheetNamePattern") -> "sheetNamePattern",
@@ -54,15 +84,14 @@ private[excel] object ExcelParserOptions {
     encoder.encode("maxRowCount") -> "maxRowCount",
     encoder.encode("includeSheetName") -> "includeSheetName",
     encoder.encode("maxBytesForTempFiles") -> "maxBytesForTempFiles",
-    encoder.encode("thresholdBytesForTempFiles") -> "thresholdBytesForTempFiles"
+    encoder.encode("thresholdBytesForTempFiles") -> "thresholdBytesForTempFiles",
+    encoder.encode("schemaMatchColumnName") -> "schemaMatchColumnName"
   )
 
   /**
-   * Checks the provided set of keys for invalid options and attempts to match again
-   * valid options.
-   *
-   * @param keys collection of keys to valid
-   * @return An [[Option]] containing a string if there are errors, or [[None]]
+   * Checks the provided option keys for any naming issues
+   * @param keys the set of keys provided by the user
+   * @return A collection of error messages, or None
    */
   private def checkInvalidOptions(keys: Set[String]): Option[Seq[String]] = {
     val buffer = new ArrayBuffer[String]()
@@ -78,64 +107,22 @@ private[excel] object ExcelParserOptions {
   }
 
   /**
-   * Creates a new [[ExcelParserOptions]] object from a [[CaseInsensitiveStringMap]] collection
-   *
-   * @param options the map of options to read from
-   * @return an [[ExcelParserOptions]] object
+   * Create a new set of parser options from a [[CaseInsensitiveStringMap]]
+   * @param options a map of options to create from
+   * @return a new [[ExcelParserOptions]] instance
    */
   def from(options: CaseInsensitiveStringMap): ExcelParserOptions = {
-    checkInvalidOptions(options.keySet().toSet) match {
-      case Some(errors) => throw new ExcelParserOptionsException(s"Unable to parse options:\n${errors.mkString("\n")}")
-      case _ =>
-    }
-
-    val worksheetPassword = if (options.containsKey("workbookPassword")) {
-      Some(options.get("workbookPassword"))
-    } else {
-      None
-    }
-
-    val thresholdBytesForTempFiles = options.getInt("thresholdBytesForTempFiles", options.getInt("maxBytesForTempFiles", 100000000))
-
-    ExcelParserOptions(
-      worksheetPassword,
-      options.getOrDefault("sheetNamePattern", ""),
-      options.getOrDefault("cellAddress", "A1"),
-      options.getInt("headerRowCount", 1),
-      options.getInt("maxRowCount", 1000),
-      options.getBoolean("includeSheetName", false),
-      thresholdBytesForTempFiles
-    )
+    new ExcelParserOptions(options.toMap)
   }
 
   /**
-   * Creates a new [[ExcelParserOptions]] object from a [[Map]] collection
+   * Create a new set of parser options from a [[Map]]
    *
-   * @param options the map of options to read from
-   * @return an [[ExcelParserOptions]] object
+   * @param options a map of options to create from
+   * @return a new [[ExcelParserOptions]] instance
    */
   def from(options: Map[String, String]): ExcelParserOptions = {
-    checkInvalidOptions(options.keySet) match {
-      case Some(errors) => throw new ExcelParserOptionsException(s"Unable to parse options:\n${errors.mkString("\n")}")
-      case _ =>
-    }
-
-    val worksheetPassword = if (options.keys.exists(_.compareToIgnoreCase("workbookPassword") == 0)) {
-      Some(options("workbookPassword"))
-    } else {
-      None
-    }
-
-    val thresholdBytesForTempFiles = options.getOrElse("thresholdBytesForTempFiles", options.getOrElse("maxBytesForTempFiles", "100000000"))
-
-    ExcelParserOptions(
-      worksheetPassword,
-      options.getOrElse("sheetNamePattern", ""),
-      options.getOrElse("cellAddress", "A1"),
-      options.getOrElse("headerRowCount", "1").toInt,
-      options.getOrElse("maxRowCount", "1000").toInt,
-      options.getOrElse("includeSheetName", "false").toBoolean,
-      thresholdBytesForTempFiles.toInt
-    )
+    new ExcelParserOptions(options)
   }
+
 }
