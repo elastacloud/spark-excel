@@ -174,6 +174,15 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.thresholdBytesForTempFiles should be(100)
   }
 
+  it should "throw an exception if no value is provided for the schemaMatchColumnName option" in {
+    val input = Map[String, String](
+      "schemaMatchColumnName" -> "  "
+    )
+
+    val exception = the[ExcelParserOptionsException] thrownBy ExcelParserOptions.from(input)
+    exception.getMessage should be("The 'schemaMatchColumnName' option must contain a value if provided")
+  }
+
   "Setting properties for options" should "correctly assign the values to the options class" in {
     val optionsMap = Map[String, String](
       "workbookPassword" -> "abc123",
