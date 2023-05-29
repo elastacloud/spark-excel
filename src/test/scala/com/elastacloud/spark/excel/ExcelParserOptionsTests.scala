@@ -173,4 +173,28 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
 
     options.thresholdBytesForTempFiles should be(100)
   }
+
+  "Setting properties for options" should "correctly assign the values to the options class" in {
+    val optionsMap = Map[String, String](
+      "workbookPassword" -> "abc123",
+      "sheetNamePattern" -> """\d{2,3}""",
+      "cellAddress" -> "H8",
+      "headerRowCount" -> "17",
+      "maxRowCount" -> "5",
+      "includeSheetName" -> "true",
+      "thresholdBytesForTempFiles" -> "12",
+      "schemaMatchColumnName" -> "matchesSchema"
+    )
+
+    val options = new ExcelParserOptions(optionsMap)
+
+    options.workbookPassword should be(Some("abc123"))
+    options.sheetNamePattern should be("""\d{2,3}""")
+    options.cellAddress should be("H8")
+    options.headerRowCount should be(17)
+    options.maxRowCount should be(5)
+    options.includeSheetName should be(true)
+    options.thresholdBytesForTempFiles should be(12)
+    options.schemaMatchColumnName should be("matchesSchema")
+  }
 }
