@@ -130,6 +130,6 @@ val commonSettings = Seq(
     }
   },
   scalaTestVersion := "3.2.16",
-  poiVersion := "5.2.2",
+  poiVersion := "5.2.3",
   crossVersion := CrossVersion.disabled
 )
