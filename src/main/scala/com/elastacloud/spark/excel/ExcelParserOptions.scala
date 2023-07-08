@@ -60,6 +60,7 @@ private[excel] class ExcelParserOptions(
   val headerRowCount: Int = parameters.getOrElse("headerRowCount", "1").toInt
   val maxRowCount: Int = parameters.getOrElse("maxRowCount", "1000").toInt
   val includeSheetName: Boolean = parameters.getOrElse("includeSheetName", "false").toBoolean
+  val nulLValue: Option[String] = parameters.get("nullValue")
   val thresholdBytesForTempFiles: Int = parameters.getOrElse("thresholdBytesForTempFiles", parameters.getOrElse("maxBytesForTempFiles", "100000000")).toInt
 
   val schemaMatchColumnName: String = parameters.getOrElse("schemaMatchColumnName", null)
@@ -83,6 +84,7 @@ private[excel] object ExcelParserOptions {
     encoder.encode("headerRowCount") -> "headerRowCount",
     encoder.encode("maxRowCount") -> "maxRowCount",
     encoder.encode("includeSheetName") -> "includeSheetName",
+    encoder.encode("nullValue") -> "nullValue",
     encoder.encode("maxBytesForTempFiles") -> "maxBytesForTempFiles",
     encoder.encode("thresholdBytesForTempFiles") -> "thresholdBytesForTempFiles",
     encoder.encode("schemaMatchColumnName") -> "schemaMatchColumnName"

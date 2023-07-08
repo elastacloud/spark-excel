@@ -292,7 +292,12 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
           case _ => (null, false)
         }
         case CellType.STRING => targetType match {
-          case _: StringType => (UTF8String.fromString(currentCellValue.getStringValue), true)
+          case _: StringType =>
+            val cellStringValue = UTF8String.fromString(currentCellValue.getStringValue)
+            options.nulLValue match {
+              case Some(nullValue) if cellStringValue.toString.equalsIgnoreCase(nullValue) => (null, true)
+              case _ => (cellStringValue, true)
+            }
           case _ => (null, false)
         }
         case _ => (UTF8String.fromString(currentCellValue.toString), true)
