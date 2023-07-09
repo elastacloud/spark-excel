@@ -591,4 +591,42 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
       the[ExcelParserException] thrownBy parser.getDataIterator.toList should have message "The specified schema match column is not defined as a boolean type."
     }
   }
+
+  "Specifying a null value" should "read the string value as null" in {
+    withInputStream("/Parser/SimpleWorkbook.xlsx") { inputStream =>
+      val options = new ExcelParserOptions(Map[String, String](
+        "nullValue" -> "y"
+      ))
+
+      val expectedData = Seq(
+        Vector[Any]("a".asUnsafe, 1D, "x".asUnsafe),
+        Vector[Any]("b".asUnsafe, 2D, null),
+        Vector[Any]("c".asUnsafe, 3D, "z".asUnsafe)
+      )
+
+      val parser = new ExcelParser(inputStream, options)
+      val actualData = parser.getDataIterator.toList
+
+      actualData should equal(expectedData)
+    }
+  }
+
+  it should "Handle string concatenation formulas" in {
+    withInputStream("/Parser/ConcatString.xlsx") { inputStream =>
+      val options = new ExcelParserOptions(Map[String, String](
+        "nullValue" -> "MR ADAM FOX"
+      ))
+
+      val expectedData = Seq(
+        Vector[Any]("Dr".asUnsafe, "Jennifer".asUnsafe, "Alagora".asUnsafe, "Dr Jennifer Alagora".asUnsafe),
+        Vector[Any]("Mr".asUnsafe, "Adam".asUnsafe, "Fox".asUnsafe, null),
+        Vector[Any]("Ms".asUnsafe, null, "Proctor".asUnsafe, "Ms Proctor".asUnsafe)
+      )
+
+      val parser = new ExcelParser(inputStream, options)
+
+      val actualData = parser.getDataIterator.toList
+      actualData should equal(expectedData)
+    }
+  }
 }
