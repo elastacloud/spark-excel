@@ -1,3 +1,19 @@
+/*
+ * Copyright 2021 Elastacloud Limited
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package com.elastacloud.spark.excel
 
 import org.apache.spark.sql.util.CaseInsensitiveStringMap
@@ -16,6 +32,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.headerRowCount should be(1)
     options.maxRowCount should be(1000)
     options.includeSheetName should be(false)
+    options.nulLValue should be(None)
     options.thresholdBytesForTempFiles should be(100000000)
     options.schemaMatchColumnName should be(null)
   }
@@ -31,6 +48,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.headerRowCount should be(1)
     options.maxRowCount should be(1000)
     options.includeSheetName should be(false)
+    options.nulLValue should be(None)
     options.thresholdBytesForTempFiles should be(100000000)
     options.schemaMatchColumnName should be(null)
   }
@@ -43,6 +61,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
       "headerRowCount" -> "12",
       "maxRowCount" -> "2000",
       "includeSheetName" -> "true",
+      "nullValue" -> "NA",
       "maxBytesForTempFiles" -> "10",
       "schemaMatchColumnName" -> "_isValid"
     ).asJava)
@@ -55,6 +74,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.headerRowCount should be(12)
     options.maxRowCount should be(2000)
     options.includeSheetName should be(true)
+    options.nulLValue should be(Some("NA"))
     options.thresholdBytesForTempFiles should be(10)
     options.schemaMatchColumnName should be("_isValid")
   }
@@ -67,6 +87,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
       "headerCount" -> "12",
       "maxRowCont" -> "2000",
       "includShetNam" -> "true",
+      "nulvalue" -> "NA",
       "macsBitesTempFiles" -> "10",
       "schemaMatchColumName" -> "_isValid"
     ).asJava)
@@ -79,6 +100,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     exception.getMessage.contains("Invalid option 'headercount', did you mean 'headerRowCount'?") should be(true)
     exception.getMessage.contains("Invalid option 'maxrowcont', did you mean 'maxRowCount'?") should be(true)
     exception.getMessage.contains("Invalid option 'includshetnam', did you mean 'includeSheetName'?") should be(true)
+    exception.getMessage.contains("Invalid option 'nulvalue', did you mean 'nullValue'?") should be(true)
     exception.getMessage.contains("Invalid option 'macsbitestempfiles', did you mean 'maxBytesForTempFiles'") should be(true)
     exception.getMessage.contains("Invalid option 'schemamatchcolumname', did you mean 'schemaMatchColumnName'") should be(true)
   }
@@ -125,6 +147,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.headerRowCount should be(1)
     options.maxRowCount should be(1000)
     options.includeSheetName should be(false)
+    options.nulLValue should be(None)
     options.thresholdBytesForTempFiles should be(100000000)
     options.schemaMatchColumnName should be(null)
   }
@@ -137,6 +160,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
       "headerRowCount" -> "12",
       "maxRowCount" -> "2000",
       "includeSheetName" -> "true",
+      "nullValue" -> "NA",
       "maxBytesForTempFiles" -> "100",
       "schemaMatchColumnName" -> "_isValid"
     )
@@ -149,6 +173,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.headerRowCount should be(12)
     options.maxRowCount should be(2000)
     options.includeSheetName should be(true)
+    options.nulLValue should be(Some("NA"))
     options.thresholdBytesForTempFiles should be(100)
     options.schemaMatchColumnName should be("_isValid")
   }
@@ -191,6 +216,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
       "headerRowCount" -> "17",
       "maxRowCount" -> "5",
       "includeSheetName" -> "true",
+      "nullValue" -> "N/A",
       "thresholdBytesForTempFiles" -> "12",
       "schemaMatchColumnName" -> "matchesSchema"
     )
@@ -203,6 +229,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.headerRowCount should be(17)
     options.maxRowCount should be(5)
     options.includeSheetName should be(true)
+    options.nulLValue should be(Some("N/A"))
     options.thresholdBytesForTempFiles should be(12)
     options.schemaMatchColumnName should be("matchesSchema")
   }

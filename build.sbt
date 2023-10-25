@@ -23,6 +23,7 @@ val sparkVersion = settingKey[String]("Spark version")
 val sparkExcelVersion = settingKey[String]("Version of the Spark Excel library")
 val scalaTestVersion = settingKey[String]("ScalaTest version")
 val poiVersion = settingKey[String]("Apache POI version")
+val log4JVersion = settingKey[String]("Apache Log4J version")
 
 name := "spark-excel"
 organization := "com.elastacloud"
@@ -61,7 +62,9 @@ libraryDependencies ++= Seq(
   "org.apache.poi" % "poi-ooxml-lite" % poiVersion.value % Compile,
   "org.apache.commons" % "commons-compress" % "1.21" % Compile,
   "org.apache.commons" % "commons-collections4" % "4.4" % Compile,
-  "commons-io" % "commons-io" % "2.11.0" % Compile
+  "commons-io" % "commons-io" % "2.11.0" % Compile,
+  "org.apache.logging.log4j" % "log4j-core" % log4JVersion.value % Compile,
+  "org.apache.logging.log4j" % "log4j-api" % log4JVersion.value % Compile
 )
 
 // Setup test dependencies and configuration
@@ -117,8 +120,8 @@ addArtifact(Compile / assembly / artifact, assembly)
 
 // Define common settings for the library
 val commonSettings = Seq(
-  sparkVersion := System.getProperty("sparkVersion", "3.4.0"),
-  sparkExcelVersion := "0.1.11",
+  sparkVersion := System.getProperty("sparkVersion", "3.5.0"),
+  sparkExcelVersion := "0.1.12",
   version := s"${sparkVersion.value}_${sparkExcelVersion.value}",
   scalaVersion := {
     if (sparkVersion.value < "3.2.0") {
@@ -130,6 +133,7 @@ val commonSettings = Seq(
     }
   },
   scalaTestVersion := "3.2.16",
-  poiVersion := "5.2.2",
+  poiVersion := "5.2.3",
+  log4JVersion := "2.20.0",
   crossVersion := CrossVersion.disabled
 )
