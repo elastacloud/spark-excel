@@ -60,7 +60,7 @@ libraryDependencies ++= Seq(
   "org.apache.poi" % "poi" % poiVersion.value % Compile,
   "org.apache.poi" % "poi-ooxml" % poiVersion.value % Compile,
   "org.apache.poi" % "poi-ooxml-lite" % poiVersion.value % Compile,
-  "org.apache.commons" % "commons-compress" % "1.25.0" % Compile,
+  "org.apache.commons" % "commons-compress" % "1.26.1" % Compile,
   "org.apache.commons" % "commons-collections4" % "4.4" % Compile,
   "commons-io" % "commons-io" % "2.15.1" % Compile,
   "org.apache.logging.log4j" % "log4j-core" % log4JVersion.value % Compile,
