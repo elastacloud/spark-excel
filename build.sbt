@@ -127,11 +127,9 @@ val commonSettings = Seq(
     if (sparkVersion.value < "3.2.0") {
       "2.12.10"
     } else if (sparkVersion.value < "3.4.0") {
-      "2.12.14"    }
-    else if (sparkVersion.value < "3.5.0") {
-      "2.12.15"
+      "2.12.14"
     } else {
-      "2.12.18"
+      "2.12.15"
     }
   },
   scalaTestVersion := "3.2.18",
