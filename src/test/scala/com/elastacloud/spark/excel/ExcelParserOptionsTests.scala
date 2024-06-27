@@ -35,6 +35,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.nulLValue should be(None)
     options.thresholdBytesForTempFiles should be(100000000)
     options.schemaMatchColumnName should be(null)
+    options.evaluateFormulae should be(true)
   }
 
   "Creating from a case insensitive map" should "use default values for an empty map" in {
@@ -51,6 +52,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.nulLValue should be(None)
     options.thresholdBytesForTempFiles should be(100000000)
     options.schemaMatchColumnName should be(null)
+    options.evaluateFormulae should be(true)
   }
 
   it should "extract values from the map" in {
@@ -63,7 +65,8 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
       "includeSheetName" -> "true",
       "nullValue" -> "NA",
       "maxBytesForTempFiles" -> "10",
-      "schemaMatchColumnName" -> "_isValid"
+      "schemaMatchColumnName" -> "_isValid",
+      "evaluateFormulae" -> "false"
     ).asJava)
 
     val options = ExcelParserOptions.from(input)
@@ -77,6 +80,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.nulLValue should be(Some("NA"))
     options.thresholdBytesForTempFiles should be(10)
     options.schemaMatchColumnName should be("_isValid")
+    options.evaluateFormulae should be(false)
   }
 
   it should "provide useful error information if options are slightly mis-spelt" in {
@@ -89,7 +93,8 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
       "includShetNam" -> "true",
       "nulvalue" -> "NA",
       "macsBitesTempFiles" -> "10",
-      "schemaMatchColumName" -> "_isValid"
+      "schemaMatchColumName" -> "_isValid",
+      "evalateFormula" -> "false"
     ).asJava)
 
     val exception = the[ExcelParserOptionsException] thrownBy ExcelParserOptions.from(input)
@@ -103,6 +108,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     exception.getMessage.contains("Invalid option 'nulvalue', did you mean 'nullValue'?") should be(true)
     exception.getMessage.contains("Invalid option 'macsbitestempfiles', did you mean 'maxBytesForTempFiles'") should be(true)
     exception.getMessage.contains("Invalid option 'schemamatchcolumname', did you mean 'schemaMatchColumnName'") should be(true)
+    exception.getMessage.contains("Invalid option 'evalateformula', did you mean 'evaluateFormulae'") should be(true)
   }
 
   it should "ignore options which are invalid and not close in spelling to valid options" in {
@@ -150,6 +156,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.nulLValue should be(None)
     options.thresholdBytesForTempFiles should be(100000000)
     options.schemaMatchColumnName should be(null)
+    options.evaluateFormulae should be(true)
   }
 
   it should "extract values from the map" in {
@@ -162,7 +169,8 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
       "includeSheetName" -> "true",
       "nullValue" -> "NA",
       "maxBytesForTempFiles" -> "100",
-      "schemaMatchColumnName" -> "_isValid"
+      "schemaMatchColumnName" -> "_isValid",
+      "evaluateFormulae" -> "false"
     )
 
     val options = ExcelParserOptions.from(input)
@@ -176,6 +184,7 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.nulLValue should be(Some("NA"))
     options.thresholdBytesForTempFiles should be(100)
     options.schemaMatchColumnName should be("_isValid")
+    options.evaluateFormulae should be(false)
   }
 
   it should "use thresholdBytesForTempFiles if maxBytesForTempFiles is not provided" in {
@@ -218,7 +227,8 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
       "includeSheetName" -> "true",
       "nullValue" -> "N/A",
       "thresholdBytesForTempFiles" -> "12",
-      "schemaMatchColumnName" -> "matchesSchema"
+      "schemaMatchColumnName" -> "matchesSchema",
+      "evaluateFormulae" -> "false"
     )
 
     val options = new ExcelParserOptions(optionsMap)
@@ -232,5 +242,6 @@ class ExcelParserOptionsTests extends AnyFlatSpec with Matchers {
     options.nulLValue should be(Some("N/A"))
     options.thresholdBytesForTempFiles should be(12)
     options.schemaMatchColumnName should be("matchesSchema")
+    options.evaluateFormulae should be(false)
   }
 }

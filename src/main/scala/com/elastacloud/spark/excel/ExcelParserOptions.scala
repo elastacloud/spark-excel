@@ -62,6 +62,7 @@ private[excel] class ExcelParserOptions(
   val includeSheetName: Boolean = parameters.getOrElse("includeSheetName", "false").toBoolean
   val nulLValue: Option[String] = parameters.get("nullValue")
   val thresholdBytesForTempFiles: Int = parameters.getOrElse("thresholdBytesForTempFiles", parameters.getOrElse("maxBytesForTempFiles", "100000000")).toInt
+  val evaluateFormulae: Boolean = parameters.getOrElse("evaluateFormulae", "true").toBoolean
 
   val schemaMatchColumnName: String = parameters.getOrElse("schemaMatchColumnName", null)
   if (schemaMatchColumnName != null && schemaMatchColumnName.trim.isEmpty) {
@@ -87,7 +88,8 @@ private[excel] object ExcelParserOptions {
     encoder.encode("nullValue") -> "nullValue",
     encoder.encode("maxBytesForTempFiles") -> "maxBytesForTempFiles",
     encoder.encode("thresholdBytesForTempFiles") -> "thresholdBytesForTempFiles",
-    encoder.encode("schemaMatchColumnName") -> "schemaMatchColumnName"
+    encoder.encode("schemaMatchColumnName") -> "schemaMatchColumnName",
+    encoder.encode("evaluateFormulae") -> "evaluateFormulae"
   )
 
   /**

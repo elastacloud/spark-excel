@@ -66,7 +66,11 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
   /**
    * An instance of the formula evaluate for the current workbook
    */
-  private val formulaEvaluator = workBook.getCreationHelper.createFormulaEvaluator()
+  private val formulaEvaluator = if (options.evaluateFormulae) {
+    Some(workBook.getCreationHelper.createFormulaEvaluator())
+  } else {
+    None
+  }
 
   /**
    * The indexes of the worksheets which match the sheet name regular expression pattern
@@ -265,42 +269,89 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
         return (null, targetNullable)
       }
 
-      val currentCellValue = formulaEvaluator.evaluate(currentCell)
-      currentCellValue.getCellType match {
+      val evaluatedFormulaCell = formulaEvaluator match {
+        case Some(evaluator) => Some(evaluator.evaluate(currentCell))
+        case None => None
+      }
+
+      val cellType = evaluatedFormulaCell match {
+        case Some(evaluatedCell) => evaluatedCell.getCellType
+        case None => currentCell.getCellType
+      }
+
+      cellType match {
         case CellType._NONE | CellType.BLANK | CellType.ERROR => (null, targetNullable)
         case CellType.BOOLEAN => targetType match {
-          case _: StringType => (UTF8String.fromString(currentCellValue.getBooleanValue.toString), true)
-          case _: BooleanType => (currentCellValue.getBooleanValue, true)
+          case _: StringType =>
+            evaluatedFormulaCell match {
+              case Some(evaluatedCell) => (UTF8String.fromString(evaluatedCell.getBooleanValue.toString), true)
+              case None => (UTF8String.fromString(currentCell.getBooleanCellValue.toString), true)
+            }
+          case _: BooleanType =>
+            evaluatedFormulaCell match {
+              case Some(evaluatedCell) => (evaluatedCell.getBooleanValue, true)
+              case None => (currentCell.getBooleanCellValue, true)
+            }
           case _ => (null, false)
         }
         case CellType.NUMERIC => targetType match {
           case _: StringType => if (DateUtil.isCellDateFormatted(currentCell)) {
-            (UTF8String.fromString(DateUtil.getLocalDateTime(currentCellValue.getNumberValue).format(DateTimeFormatter.ISO_DATE_TIME)), true)
+            evaluatedFormulaCell match {
+              case Some(evaluatedCell) => (UTF8String.fromString(DateUtil.getLocalDateTime(evaluatedCell.getNumberValue).format(DateTimeFormatter.ISO_DATE_TIME)), true)
+              case None => (UTF8String.fromString(DateUtil.getLocalDateTime(currentCell.getNumericCellValue).format(DateTimeFormatter.ISO_DATE_TIME)), true)
+            }
           } else {
-            (UTF8String.fromString(currentCellValue.getNumberValue.toString), true)
+            evaluatedFormulaCell match {
+              case Some(evaluatedCell) => (UTF8String.fromString(evaluatedCell.getNumberValue.toString), true)
+              case None => (UTF8String.fromString(currentCell.getNumericCellValue.toString), true)
+            }
           }
           case _: TimestampType if DateUtil.isCellDateFormatted(currentCell) =>
-            val ts = Timestamp.valueOf(DateUtil.getLocalDateTime(currentCellValue.getNumberValue))
+            val ts = evaluatedFormulaCell match {
+              case Some(evaluatedCell) => Timestamp.valueOf(DateUtil.getLocalDateTime(evaluatedCell.getNumberValue))
+              case None => Timestamp.valueOf(DateUtil.getLocalDateTime(currentCell.getNumericCellValue))
+            }
             (DateTimeUtils.fromJavaTimestamp(ts), true)
           case _: DateType if DateUtil.isCellDateFormatted(currentCell) =>
-            val ts = Timestamp.valueOf(DateUtil.getLocalDateTime(currentCellValue.getNumberValue))
+            val ts = evaluatedFormulaCell match {
+              case Some(evaluatedCell) => Timestamp.valueOf(DateUtil.getLocalDateTime(evaluatedCell.getNumberValue))
+              case None => Timestamp.valueOf(DateUtil.getLocalDateTime(currentCell.getNumericCellValue))
+            }
             (DateTimeUtils.fromJavaDate(Date.valueOf(ts.toLocalDateTime.toLocalDate)), true)
-          case _: IntegerType => (currentCellValue.getNumberValue.toInt, true)
-          case _: LongType => (currentCellValue.getNumberValue.toLong, true)
-          case _: FloatType => (currentCellValue.getNumberValue.toFloat, true)
-          case _: DoubleType => (currentCellValue.getNumberValue, true)
+          case _: IntegerType => evaluatedFormulaCell match {
+            case Some(evaluatedCell) => (evaluatedCell.getNumberValue.toInt, true)
+            case None => (currentCell.getNumericCellValue.toInt, true)
+          }
+          case _: LongType => evaluatedFormulaCell match {
+            case Some(evaluatedCell) => (evaluatedCell.getNumberValue.toLong, true)
+            case None => (currentCell.getNumericCellValue.toLong, true)
+          }
+          case _: FloatType => evaluatedFormulaCell match {
+            case Some(evaluatedCell) => (evaluatedCell.getNumberValue.toFloat, true)
+            case None => (currentCell.getNumericCellValue.toFloat, true)
+          }
+          case _: DoubleType => evaluatedFormulaCell match {
+            case Some(evaluatedCell) => (evaluatedCell.getNumberValue, true)
+            case None => (currentCell.getNumericCellValue, true)
+          }
           case _ => (null, false)
         }
         case CellType.STRING => targetType match {
           case _: StringType =>
-            val cellStringValue = UTF8String.fromString(currentCellValue.getStringValue)
+            val cellStringValue = evaluatedFormulaCell match {
+              case Some(evaluatedCell) => UTF8String.fromString(evaluatedCell.getStringValue)
+              case None => UTF8String.fromString(currentCell.getStringCellValue)
+            }
             options.nulLValue match {
               case Some(nullValue) if cellStringValue.toString.equalsIgnoreCase(nullValue) => (null, true)
               case _ => (cellStringValue, true)
             }
           case _ => (null, false)
         }
-        case _ => (UTF8String.fromString(currentCellValue.toString), true)
+        case _ => evaluatedFormulaCell match {
+          case Some(evaluatedCell) => (UTF8String.fromString(evaluatedCell.toString), true)
+          case None => (UTF8String.fromString(currentCell.toString), true)
+        }
       }
     }
   }
@@ -388,11 +439,18 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
         // Get the current cell (or cell containing data for part of a merged region), the determine the Spark DataType
         // for the cell
         val currentCell = sheet.getRow(rowIndex).getCell(colIndex, Row.MissingCellPolicy.RETURN_NULL_AND_BLANK)
-        val fieldType: Option[DataType] = if (currentCell == null || currentCell.getCellType == CellType.BLANK) None else formulaEvaluator.evaluate(currentCell).getCellType match {
-          case CellType._NONE | CellType.BLANK | CellType.ERROR => None
-          case CellType.BOOLEAN => Some(BooleanType)
-          case CellType.NUMERIC => if (DateUtil.isCellDateFormatted(currentCell)) Some(TimestampType) else Some(DoubleType)
-          case _ => Some(StringType)
+        val fieldType: Option[DataType] = if (currentCell == null || currentCell.getCellType == CellType.BLANK) None else {
+          val cellType = formulaEvaluator match {
+            case Some(evaluator) => evaluator.evaluate(currentCell).getCellType
+            case None => currentCell.getCellType
+          }
+
+          cellType match {
+            case CellType._NONE | CellType.BLANK | CellType.ERROR => None
+            case CellType.BOOLEAN => Some(BooleanType)
+            case CellType.NUMERIC => if (DateUtil.isCellDateFormatted(currentCell)) Some(TimestampType) else Some(DoubleType)
+            case _ => Some(StringType)
+          }
         }
         fieldType
       })
