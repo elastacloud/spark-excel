@@ -62,7 +62,7 @@ libraryDependencies ++= Seq(
   "org.apache.poi" % "poi-ooxml-lite" % poiVersion.value % Compile,
   "org.apache.commons" % "commons-compress" % "1.26.1" % Compile,
   "org.apache.commons" % "commons-collections4" % "4.4" % Compile,
-  "commons-io" % "commons-io" % "2.15.1" % Compile,
+  "commons-io" % "commons-io" % "2.16.1" % Compile,
   "org.apache.logging.log4j" % "log4j-core" % log4JVersion.value % Compile,
   "org.apache.logging.log4j" % "log4j-api" % log4JVersion.value % Compile
 )
@@ -132,8 +132,8 @@ val commonSettings = Seq(
       "2.12.15"
     }
   },
-  scalaTestVersion := "3.2.17",
+  scalaTestVersion := "3.2.18",
   poiVersion := "5.2.5",
-  log4JVersion := "2.22.0",
+  log4JVersion := "2.23.1",
   crossVersion := CrossVersion.disabled
 )
