@@ -288,6 +288,37 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
     }
   }
 
+  it should "Return only the string value of the cell if formula evaluation is disabled" in {
+    withInputStream("/Parser/CalculatedData.xlsx") { inputStream =>
+      val expectedSchema = StructType(Array(
+        StructField("Col_A", DoubleType, nullable = true),
+        StructField("Col_B", TimestampType, nullable = true),
+        StructField("Col_C", StringType, nullable = true),
+        StructField("Col_D", StringType, nullable = true),
+        StructField("Col_E", StringType, nullable = true)
+      ))
+
+      val expectedRowData = Seq[Any](
+        6,
+        DateTimeUtils.fromJavaTimestamp(Timestamp.valueOf("2020-01-06 00:00:00.000")),
+        "A7*A7".asUnsafe,
+        "EOMONTH(B7,3)".asUnsafe,
+        "DAY(B7)".asUnsafe
+      )
+
+      val options = new ExcelParserOptions(Map[String, String](
+        "evaluateFormulae" -> "false"
+      ))
+
+      val parser = new ExcelParser(inputStream, options)
+      parser.readDataSchema() should equal(expectedSchema)
+
+      val data = parser.getDataIterator.toList
+      data.length should be(10)
+      data(5) should equal(expectedRowData)
+    }
+  }
+
   it should "Handle string concatenation formulas" in {
     withInputStream("/Parser/ConcatString.xlsx") { inputStream =>
       val expectedSchema = StructType(Array(
