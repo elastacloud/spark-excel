@@ -660,4 +660,27 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
       actualData should equal(expectedData)
     }
   }
+
+  "Reading a file containing no data" should "throw an exception" in {
+    withInputStream("/Parser/Empty.xlsx") { inputStream =>
+      val parser = new ExcelParser(inputStream, new ExcelParserOptions())
+
+      val error = intercept[ExcelParserException] {
+        parser.getDataIterator.toList
+      }
+
+      error.getMessage should be("No data found on first row")
+    }
+  }
+
+  it should "return an single empty record if only headers exist" in {
+    withInputStream("/Parser/NoData.xlsx") { inputStream =>
+      val expectedData = Seq(Vector(null, null, null))
+
+      val parser = new ExcelParser(inputStream, new ExcelParserOptions())
+      val actualData = parser.getDataIterator.toList
+
+      actualData should be(expectedData)
+    }
+  }
 }

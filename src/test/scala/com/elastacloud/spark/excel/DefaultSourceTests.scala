@@ -16,6 +16,7 @@
 
 package com.elastacloud.spark.excel
 
+import com.elastacloud.spark.excel.parser.ExcelParserException
 import org.apache.spark.sql.SparkSession
 import org.apache.spark.sql.types._
 import org.scalatest.BeforeAndAfterAll
@@ -178,6 +179,38 @@ class DefaultSourceTests extends AnyFlatSpec with Matchers with BeforeAndAfterAl
       .load(inputPath.replace("%20", " "))
 
     df.count() should be(3)
+  }
+
+  "Reading an empty workbook" should "throw an exception" in {
+    val inputPath = testFilePath("/Parser/Empty.xlsx")
+
+    val error = intercept[ExcelParserException] {
+      spark.read
+        .format("excel")
+        .load(inputPath.replace("%20", " "))
+        .count()
+    }
+
+    error.getMessage should be("No data found on first row")
+  }
+
+  it should "return a single empty record if only headers exist" in {
+    val inputPath = testFilePath("/Parser/NoData.xlsx")
+
+    val dataSchema = StructType(Array(
+      StructField("Col1", StringType, nullable = true),
+      StructField("Col2", StringType, nullable = true),
+      StructField("Col3", StringType, nullable = true),
+      StructField("Col4", StringType, nullable = true)
+    ))
+
+    val df = spark.read
+      .format("com.elastacloud.spark.excel")
+      .schema(dataSchema)
+      .load(inputPath)
+
+    df.count() should be(1)
+    df.schema should equal(dataSchema)
   }
 
   "Attempting to write to Excel" should "raise an error" in {
