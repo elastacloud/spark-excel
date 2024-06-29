@@ -126,6 +126,7 @@ The library supports the following options:
 | maxBytesForTempFiles       | Int     | 10000000 | Sets the number of bytes at which a workbook is (ooxml format) is regarded as too large to hold in memory and the data is put into temp files instead. Whilst the cluster may have large volumes of memory, the node processing the file will be limited. |
 | thresholdBytesForTempFiles | Int     | 10000000 | _Alias for maxBytesForTempFiles_                                                                                                                                                                                                                          |
 | schemaMatchColumnName      | Boolean | False    | Defines the column name to write the flag indicating if the current record matches the provided or inferred schema. If the schema is provided then the column name must exist within that provided schema.                                                |
+| evaluateFormulae           | Boolean | True     | Instructs the parser to evaluate formulas in the source (True), or to extract only the formula itself (False, e.g. A7*2).                                                                                                                                 |
 
 ```scala
 val df = spark.read
@@ -138,6 +139,7 @@ val df = spark.read
   .option("maxRowCount", 10) // Read only the first 10 records to determine the schema of the data
   .option("thresholdBytesForTempFiles", 50000000) // Set size limit before temp files are used
   .option("schemaMatchColumnName", "_isValid") // Write a flag to the '_isValid' column indicating if the records matches the schema
+  .option("evaluateFormulae", "true") // Evaluate the formula in the spreadsheet
   .load("/path/to/file.xlsx")
 ```
 
