@@ -60,9 +60,9 @@ libraryDependencies ++= Seq(
   "org.apache.poi" % "poi" % poiVersion.value % Compile,
   "org.apache.poi" % "poi-ooxml" % poiVersion.value % Compile,
   "org.apache.poi" % "poi-ooxml-lite" % poiVersion.value % Compile,
-  "org.apache.commons" % "commons-compress" % "1.21" % Compile,
+  "org.apache.commons" % "commons-compress" % "1.26.1" % Compile,
   "org.apache.commons" % "commons-collections4" % "4.4" % Compile,
-  "commons-io" % "commons-io" % "2.11.0" % Compile,
+  "commons-io" % "commons-io" % "2.16.1" % Compile,
   "org.apache.logging.log4j" % "log4j-core" % log4JVersion.value % Compile,
   "org.apache.logging.log4j" % "log4j-api" % log4JVersion.value % Compile
 )
@@ -120,8 +120,8 @@ addArtifact(Compile / assembly / artifact, assembly)
 
 // Define common settings for the library
 val commonSettings = Seq(
-  sparkVersion := System.getProperty("sparkVersion", "3.5.0"),
-  sparkExcelVersion := "0.1.12",
+  sparkVersion := System.getProperty("sparkVersion", "3.5.1"),
+  sparkExcelVersion := "0.1.13",
   version := s"${sparkVersion.value}_${sparkExcelVersion.value}",
   scalaVersion := {
     if (sparkVersion.value < "3.2.0") {
@@ -132,8 +132,8 @@ val commonSettings = Seq(
       "2.12.15"
     }
   },
-  scalaTestVersion := "3.2.16",
-  poiVersion := "5.2.3",
-  log4JVersion := "2.20.0",
+  scalaTestVersion := "3.2.18",
+  poiVersion := "5.2.5",
+  log4JVersion := "2.23.1",
   crossVersion := CrossVersion.disabled
 )

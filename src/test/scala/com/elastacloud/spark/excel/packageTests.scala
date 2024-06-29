@@ -60,11 +60,12 @@ class packageTests extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
   it should "apply options to all files being read" in {
     val input1 = testFilePath("/Parser/SimpleWorkbook.xlsx")
     val input2 = testFilePath("/Parser/SimpleWorkbook.xls")
+    val input3 = testFilePath("/Parser/NoData.xlsx")
 
     val df = spark.read
       .option("headerRowCount", 0)
       .option("cellAddress", "A2")
-      .excel(input1, input2)
+      .excel(input1, input2, input3)
 
     val simpleWorkbookSchema = StructType(Array(
       StructField("col_0", StringType, nullable = true),
@@ -73,6 +74,6 @@ class packageTests extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
     ))
 
     df.schema should equal(simpleWorkbookSchema)
-    df.count() should be(6)
+    df.count() should be(7)
   }
 }
