@@ -426,41 +426,48 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
       firstColumnIndex.to(lastColumnIndex).zipWithIndex.map { case (_, i) => s"col_$i" }
     }
 
-    // Determine the last data row, this is either the last row of data, or the maximum number of rows defined by the user
-    val lastRowNum = options.maxRowCount match {
-      case rowNum if rowNum != 0 && rowNum + firstDataRow.getRowNum <= sheet.getLastRowNum => rowNum + firstDataRow.getRowNum
-      case _ => sheet.getLastRowNum
-    }
-
-    // Get the field structure for data in the workbook
-    var fields = firstColumnIndex.until(lastColumnIndex).zipWithIndex.map { case (colIndex, i) =>
-      // Get the collection of types for the current column across the rows used for inferring the schema
-      val colTypes = firstDataRow.getRowNum.until(lastRowNum).flatMap(rowIndex => {
-        // Get the current cell (or cell containing data for part of a merged region), the determine the Spark DataType
-        // for the cell
-        val currentCell = sheet.getRow(rowIndex).getCell(colIndex, Row.MissingCellPolicy.RETURN_NULL_AND_BLANK)
-        val fieldType: Option[DataType] = if (currentCell == null || currentCell.getCellType == CellType.BLANK) None else {
-          val cellType = formulaEvaluator match {
-            case Some(evaluator) => evaluator.evaluate(currentCell).getCellType
-            case None => currentCell.getCellType
-          }
-
-          cellType match {
-            case CellType._NONE | CellType.BLANK | CellType.ERROR => None
-            case CellType.BOOLEAN => Some(BooleanType)
-            case CellType.NUMERIC => if (DateUtil.isCellDateFormatted(currentCell)) Some(TimestampType) else Some(DoubleType)
-            case _ => Some(StringType)
-          }
-        }
-        fieldType
-      })
-
-      // If all of the cells in the inference set are of the same type, then use this as the schema type, otherwise
-      // default to data as a string
-      if (colTypes.distinct.length == 1) {
-        StructField(fieldNames(i), colTypes.head, nullable = true)
-      } else {
+    var fields = if (firstRow.getRowNum == sheet.getLastRowNum) {
+      // If there is no data in the file (other than the header) then return a default schema
+      firstColumnIndex.until(lastColumnIndex).zipWithIndex.map { case (_, i) =>
         StructField(fieldNames(i), StringType, nullable = true)
+      }
+    } else {
+      // Determine the last data row, this is either the last row of data, or the maximum number of rows defined by the user
+      val lastRowNum = options.maxRowCount match {
+        case rowNum if rowNum != 0 && rowNum + firstDataRow.getRowNum <= sheet.getLastRowNum => rowNum + firstDataRow.getRowNum
+        case _ => sheet.getLastRowNum
+      }
+
+      // Get the field structure for data in the workbook
+      firstColumnIndex.until(lastColumnIndex).zipWithIndex.map { case (colIndex, i) =>
+        // Get the collection of types for the current column across the rows used for inferring the schema
+        val colTypes = firstDataRow.getRowNum.until(lastRowNum).flatMap(rowIndex => {
+          // Get the current cell (or cell containing data for part of a merged region), the determine the Spark DataType
+          // for the cell
+          val currentCell = sheet.getRow(rowIndex).getCell(colIndex, Row.MissingCellPolicy.RETURN_NULL_AND_BLANK)
+          val fieldType: Option[DataType] = if (currentCell == null || currentCell.getCellType == CellType.BLANK) None else {
+            val cellType = formulaEvaluator match {
+              case Some(evaluator) => evaluator.evaluate(currentCell).getCellType
+              case None => currentCell.getCellType
+            }
+
+            cellType match {
+              case CellType._NONE | CellType.BLANK | CellType.ERROR => None
+              case CellType.BOOLEAN => Some(BooleanType)
+              case CellType.NUMERIC => if (DateUtil.isCellDateFormatted(currentCell)) Some(TimestampType) else Some(DoubleType)
+              case _ => Some(StringType)
+            }
+          }
+          fieldType
+        })
+
+        // If all of the cells in the inference set are of the same type, then use this as the schema type, otherwise
+        // default to data as a string
+        if (colTypes.distinct.length == 1) {
+          StructField(fieldNames(i), colTypes.head, nullable = true)
+        } else {
+          StructField(fieldNames(i), StringType, nullable = true)
+        }
       }
     }
 
