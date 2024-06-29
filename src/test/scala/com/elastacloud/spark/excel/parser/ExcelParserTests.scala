@@ -122,29 +122,31 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "handle cells with different types from the inferred schema" in {
+  it should "read data correctly using the inferred schema" in {
     withInputStream("/Parser/VaryingTypes.xlsx") { inputStream =>
       val options = new ExcelParserOptions(Map[String, String](
+        "evaluateFormulae" -> "false",
         "maxRowCount" -> "3"
       )) // Limit the row count so that it doesn't infer based on the string row
 
       val expectedSchema = StructType(Array(
         StructField("Item", StringType, nullable = true),
         StructField("2010_0", DoubleType, nullable = true),
-        StructField("2011_0", DoubleType, nullable = true)
+        StructField("2011_0", DoubleType, nullable = true),
+        StructField("IsGood", BooleanType, nullable = true)
       ))
 
       val expectedData = Seq(
-        Vector[Any]("Item 1".asUnsafe, 99.4, 99.4),
-        Vector[Any]("Item 2".asUnsafe, 12.4, 12.4),
-        Vector[Any]("Item 3".asUnsafe, 74.2, 74.2),
-        Vector[Any]("Item 4".asUnsafe, 36.8, 36.8),
-        Vector[Any]("Item 5".asUnsafe, 24.2, 24.2),
-        Vector[Any]("Item 6".asUnsafe, 11.6, 11.6),
-        Vector[Any]("Header Items".asUnsafe, null, null),
-        Vector[Any]("Item 12".asUnsafe, 99.2, 99.2),
-        Vector[Any]("Item 13".asUnsafe, 18.4, 18.4),
-        Vector[Any]("Item 14".asUnsafe, 12.3, 12.3)
+        Vector[Any]("Item 1".asUnsafe, 99.4, 99.4, true),
+        Vector[Any]("Item 2".asUnsafe, 12.4, 12.4, true),
+        Vector[Any]("Item 3".asUnsafe, 74.2, 74.2, true),
+        Vector[Any]("Item 4".asUnsafe, 36.8, 36.8, false),
+        Vector[Any]("Item 5".asUnsafe, 24.2, 24.2, false),
+        Vector[Any]("Item 6".asUnsafe, 11.6, 11.6, false),
+        Vector[Any]("Header Items".asUnsafe, null, null, null),
+        Vector[Any]("Item 12".asUnsafe, 99.2, 99.2, false),
+        Vector[Any]("Item 13".asUnsafe, 18.4, 18.4, true),
+        Vector[Any]("Item 14".asUnsafe, 12.3, 12.3, true)
       )
 
       val parser = new ExcelParser(inputStream, options)
@@ -537,20 +539,21 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
         StructField("Item", StringType, nullable = true),
         StructField("2010_0", DoubleType, nullable = true),
         StructField("2011_0", DoubleType, nullable = true),
+        StructField("IsGood", BooleanType, nullable = true),
         StructField("ValidRow", BooleanType, nullable = false)
       ))
 
       val expectedData = Seq(
-        Vector[Any]("Item 1".asUnsafe, 99.4, 99.4, true),
-        Vector[Any]("Item 2".asUnsafe, 12.4, 12.4, true),
-        Vector[Any]("Item 3".asUnsafe, 74.2, 74.2, true),
-        Vector[Any]("Item 4".asUnsafe, 36.8, 36.8, true),
-        Vector[Any]("Item 5".asUnsafe, 24.2, 24.2, true),
-        Vector[Any]("Item 6".asUnsafe, 11.6, 11.6, true),
-        Vector[Any]("Header Items".asUnsafe, null, null, false),
-        Vector[Any]("Item 12".asUnsafe, 99.2, 99.2, true),
-        Vector[Any]("Item 13".asUnsafe, 18.4, 18.4, true),
-        Vector[Any]("Item 14".asUnsafe, 12.3, 12.3, true)
+        Vector[Any]("Item 1".asUnsafe, 99.4, 99.4, true, true),
+        Vector[Any]("Item 2".asUnsafe, 12.4, 12.4, true, true),
+        Vector[Any]("Item 3".asUnsafe, 74.2, 74.2, true, true),
+        Vector[Any]("Item 4".asUnsafe, 36.8, 36.8, false, true),
+        Vector[Any]("Item 5".asUnsafe, 24.2, 24.2, false, true),
+        Vector[Any]("Item 6".asUnsafe, 11.6, 11.6, false, true),
+        Vector[Any]("Header Items".asUnsafe, null, null, null, false),
+        Vector[Any]("Item 12".asUnsafe, 99.2, 99.2, false, true),
+        Vector[Any]("Item 13".asUnsafe, 18.4, 18.4, true, true),
+        Vector[Any]("Item 14".asUnsafe, 12.3, 12.3, true, true)
       )
 
       val parser = new ExcelParser(inputStream, options)
