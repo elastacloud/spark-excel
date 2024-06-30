@@ -22,7 +22,7 @@ import com.github.pjfanning.xlsx.StreamingReader
 import org.apache.poi.hssf.usermodel.HSSFWorkbookFactory
 import org.apache.poi.openxml4j.util.{ZipInputStreamZipEntrySource, ZipSecureFile}
 import org.apache.poi.ss.usermodel._
-import org.apache.poi.ss.util.CellAddress
+import org.apache.poi.ss.util.{CellAddress, CellRangeAddress}
 import org.apache.poi.xssf.usermodel.XSSFWorkbookFactory
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.types._
@@ -114,7 +114,12 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
   /**
    * The schema of the Excel data
    */
-  private var excelSchema: Option[StructType] = schema
+  private[excel] var excelSchema: Option[StructType] = schema
+
+  /**
+   * Cache for the merged regions so it's not retrieved each time from the sheet object
+   */
+  private val sheetMergedRegions: scala.collection.mutable.Map[String, scala.collection.mutable.Buffer[CellRangeAddress]] = scala.collection.mutable.Map.empty
 
   /**
    * Holds a collection of merged cell
@@ -398,8 +403,11 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
    * @return the worksheet [[Cell]] containing the data for the merged region
    */
   private def getMergedCell(cell: Cell): Cell = {
-    val sheet = cell.getSheet
-    val mergedRegions = sheet.getMergedRegions.asScala
+    val mergedRegions = if (sheetMergedRegions.contains(cell.getSheet.getSheetName)) {
+      sheetMergedRegions(cell.getSheet.getSheetName)
+    } else {
+      cell.getSheet.getMergedRegions.asScala
+    }
     val mergedRange = mergedRegions.exists(p => p.isInRange(cell))
 
     if (mergedRange) {
