@@ -117,6 +117,11 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
   private var excelSchema: Option[StructType] = schema
 
   /**
+   * Holds a collection of merged cell
+   */
+  private val mergedCells: scala.collection.mutable.Map[(Int, Int), Cell] = scala.collection.mutable.Map.empty
+
+  /**
    * Reads the schema from the Excel source based on the first sheet in the set which matches the users requirements
    *
    * @return the schema as a [[StructType]] value
@@ -398,7 +403,21 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
     val mergedRange = mergedRegions.exists(p => p.isInRange(cell))
 
     if (mergedRange) {
-      mergedRegions.filter(p => p.isInRange(cell)).map(p => sheet.getRow(p.getFirstRow).getCell(p.getFirstColumn)).head
+      // We can't access the entire sheet if we are using streaming, so for each cell which is evaluated
+      // check to see if it's the lead cell in the region, if so store this in the map and use this
+      // persisted value for each subsequent request to find the merged cell
+      val firstMergedRegion = mergedRegions.filter(p => p.isInRange(cell)).head
+      val position = (firstMergedRegion.getFirstRow, firstMergedRegion.getFirstColumn)
+
+      if (!mergedCells.contains(position) && position == (cell.getRowIndex, cell.getColumnIndex)) {
+        mergedCells += position -> cell
+      }
+
+      if (!mergedCells.contains(position)) {
+        cell
+      } else {
+        mergedCells(position)
+      }
     } else {
       cell
     }
