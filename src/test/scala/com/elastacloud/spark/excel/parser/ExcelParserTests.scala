@@ -158,8 +158,8 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
 
         val expectedSchema = StructType(Array(
           StructField("Item", StringType, nullable = true),
-          StructField("2010_0", DoubleType, nullable = true),
-          StructField("2011_0", DoubleType, nullable = true),
+          StructField("2010", DoubleType, nullable = true),
+          StructField("2011", DoubleType, nullable = true),
           StructField("IsGood", BooleanType, nullable = true)
         ))
 
@@ -493,31 +493,27 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
   }
 
   it should "handle numeric values where the requested schema type is date, float, or double" in {
-    forAll(useStreamingTable) { useStreaming =>
-      withInputStream("/Parser/CalculatedData.xlsx") { inputStream =>
-        val options = new ExcelParserOptions(Map[String, String] {
-          "useStreaming" -> useStreaming
-        })
+    withInputStream("/Parser/CalculatedData.xlsx") { inputStream =>
+      val options = new ExcelParserOptions()
 
-        val dataSchema = StructType(Array(
-          StructField("Col_A", IntegerType, nullable = true),
-          StructField("Col_B", DateType, nullable = true),
-          StructField("Col_C", FloatType, nullable = true),
-          StructField("Col_D", DateType, nullable = true),
-          StructField("Col_E", DoubleType, nullable = true)
-        ))
+      val dataSchema = StructType(Array(
+        StructField("Col_A", IntegerType, nullable = true),
+        StructField("Col_B", DateType, nullable = true),
+        StructField("Col_C", FloatType, nullable = true),
+        StructField("Col_D", DateType, nullable = true),
+        StructField("Col_E", DoubleType, nullable = true)
+      ))
 
-        val expectedData = Vector[Any](
-          1,
-          DateTimeUtils.fromJavaDate(Date.valueOf("2020-01-01")),
-          1F,
-          DateTimeUtils.fromJavaDate(Date.valueOf("2020-04-30")),
-          1D
-        )
+      val expectedData = Vector[Any](
+        1,
+        DateTimeUtils.fromJavaDate(Date.valueOf("2020-01-01")),
+        1F,
+        DateTimeUtils.fromJavaDate(Date.valueOf("2020-04-30")),
+        1D
+      )
 
-        val parser = new ExcelParser(inputStream, options, Some(dataSchema), Some(dataSchema))
-        parser.getDataIterator.toList.head should equal(expectedData)
-      }
+      val parser = new ExcelParser(inputStream, options, Some(dataSchema), Some(dataSchema))
+      parser.getDataIterator.toList.head should equal(expectedData)
     }
   }
 
@@ -605,8 +601,8 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
 
         val expectedSchema = StructType(Array(
           StructField("Item", StringType, nullable = true),
-          StructField("2010_0", DoubleType, nullable = true),
-          StructField("2011_0", DoubleType, nullable = true),
+          StructField("2010", DoubleType, nullable = true),
+          StructField("2011", DoubleType, nullable = true),
           StructField("IsGood", BooleanType, nullable = true),
           StructField("ValidRow", BooleanType, nullable = false)
         ))

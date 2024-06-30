@@ -64,6 +64,7 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
       val builder = StreamingReader.builder()
         .rowCacheSize(100)
         .bufferSize(8192)
+        .setReadSharedFormulas(true)
 
       if (options.workbookPassword.nonEmpty) {
         builder.password(options.workbookPassword.get)
@@ -361,12 +362,13 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
               case Some(evaluatedCell) => UTF8String.fromString(evaluatedCell.getStringValue)
               case None => UTF8String.fromString(currentCell.getStringCellValue)
             }
-            options.nulLValue match {
+            options.nullValue match {
               case Some(nullValue) if cellStringValue.toString.equalsIgnoreCase(nullValue) => (null, true)
               case _ => (cellStringValue, true)
             }
           case _ => (null, false)
         }
+        case CellType.FORMULA => (UTF8String.fromString(currentCell.getCellFormula), true)
         case _ => evaluatedFormulaCell match {
           case Some(evaluatedCell) => (UTF8String.fromString(evaluatedCell.toString), true)
           case None => (UTF8String.fromString(currentCell.toString), true)
@@ -449,10 +451,19 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
               val currentHeaderCell = currentRow.getCell(colIndex, Row.MissingCellPolicy.RETURN_NULL_AND_BLANK)
               if (currentHeaderCell == null) "" else {
                 val cell = getMergedCell(currentHeaderCell)
-                if (cell.getCellType == CellType.STRING) {
-                  cell.getStringCellValue
-                } else {
-                  cell.toString
+                cell.getCellType match {
+                  case CellType._NONE | CellType.BLANK | CellType.ERROR | CellType.FORMULA => ""
+                  case CellType.STRING => cell.getStringCellValue
+                  case CellType.BOOLEAN => cell.getBooleanCellValue.toString
+                  case CellType.NUMERIC => if (DateUtil.isCellDateFormatted(cell)) {
+                    DateUtil.getLocalDateTime(cell.getNumericCellValue).format(DateTimeFormatter.ISO_DATE_TIME)
+                  } else {
+                    if (cell.getNumericCellValue == Math.floor(cell.getNumericCellValue)) {
+                      cell.getNumericCellValue.toLong.toString
+                    } else {
+                      cell.getNumericCellValue.toString
+                    }
+                  }
                 }
               }
             }
