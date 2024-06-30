@@ -361,16 +361,7 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
     }
   }
 
-  "Opening a workbook with data starting at an offset" should "throw an error if the default cell address issued" in {
-    withInputStream("/Parser/MisalignedTable.xlsx") { inputStream =>
-      val options = new ExcelParserOptions()
-
-      val parser = new ExcelParser(inputStream, options)
-      the[ExcelParserException] thrownBy parser.readDataSchema() should have message "No data found on first row"
-    }
-  }
-
-  it should "return the correct data when a valid starting position is defined" in {
+  "Opening a workbook with data starting at an offset" should "return the correct data when a valid starting position is defined" in {
     withInputStream("/Parser/MisalignedTable.xlsx") { inputStream =>
       val options = new ExcelParserOptions(Map[String, String](
         "cellAddress" -> "C5"
@@ -672,7 +663,7 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
         parser.getDataIterator.toList
       }
 
-      error.getMessage should be("No data found on first row")
+      error.getMessage should be("No data found")
     }
   }
 
@@ -731,26 +722,6 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
       val actualData = parser.getDataIterator.toList
 
       actualData should equal(expectedData)
-    }
-  }
-
-  it should "read a subset of data given a different starting location" in {
-    withInputStream("/Parser/SimpleWorkbook.xlsx") { inputStream =>
-      val options = new ExcelParserOptions(Map[String, String](
-        "cellAddress" -> "B1",
-        "useStreaming" -> "true"
-      ))
-
-      val expectedSchema = StructType(Array(
-        StructField("Col2", DoubleType, nullable = true),
-        StructField("Col3", StringType, nullable = true)
-      ))
-
-      val expectedData = Seq(
-        Vector[Any](1D, "x".asUnsafe),
-        Vector[Any](2D, "y".asUnsafe),
-        Vector[Any](3D, "z".asUnsafe)
-      )
     }
   }
 }

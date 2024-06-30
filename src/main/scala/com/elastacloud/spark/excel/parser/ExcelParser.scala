@@ -32,6 +32,8 @@ import java.io.InputStream
 import java.sql.{Date, Timestamp}
 import java.time.format.DateTimeFormatter
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ListBuffer
+import scala.util.control.Breaks.{break, breakable}
 
 private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserOptions, schema: Option[StructType] = None, readSchema: Option[StructType] = None) {
   private final val sheetFieldName: String = "_SheetName"
@@ -58,21 +60,20 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
     ZipSecureFile.setMinInflateRatio(0)
     ZipInputStreamZipEntrySource.setThresholdBytesForTempFiles(options.thresholdBytesForTempFiles)
 
-    options.useStreaming match {
-      case false => options.workbookPassword match {
+    if (options.useStreaming) {
+      val builder = StreamingReader.builder()
+        .rowCacheSize(100)
+        .bufferSize(8192)
+
+      if (options.workbookPassword.nonEmpty) {
+        builder.password(options.workbookPassword.get)
+      }
+
+      builder.open(inputStream)
+    } else {
+      options.workbookPassword match {
         case Some(password) => WorkbookFactory.create(inputStream, password)
         case _ => WorkbookFactory.create(inputStream)
-      }
-      case true => {
-        val builder = StreamingReader.builder()
-          .rowCacheSize(100)
-          .bufferSize(8192)
-
-        if (options.workbookPassword.nonEmpty) {
-          builder.password(options.workbookPassword.get)
-        }
-
-        builder.open(inputStream)
       }
     }
   }
@@ -153,8 +154,7 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
     private var currentSheet: Sheet = _
     private var currentSheetName: UTF8String = _
     private var firstDataRow: Int = _
-    private var lastDataRow: Int = _
-    private var currentDataRow: Int = _
+    private var rowIterator: Iterator[Row] = _
     private val lastColumnIndex = firstCellAddress.getColumn + readDataSchema().length
     private val outputFields = readOutputSchema().map(f => f.name)
 
@@ -180,7 +180,7 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
       if (currentSheet == null) {
         loadNextSheet()
         true
-      } else if (currentDataRow <= lastDataRow) {
+      } else if (rowIterator.hasNext) {
         true
       } else if (sheetIterator.hasNext) {
         loadNextSheet()
@@ -212,7 +212,20 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
      * @return a sequence of items representing the row of data
      */
     override def next(): Seq[Any] = {
-      val currentRow = currentSheet.getRow(currentDataRow)
+      var currentRow = rowIterator.next()
+
+      // Read forward until the first data row if we are starting in a position before it
+      while (rowIterator.hasNext && currentRow.getRowNum < firstDataRow) {
+        currentRow = rowIterator.next()
+      }
+
+      // If we still can't get to the first data row then set the current row to null so that a default
+      // set of values is returned. The iterator will then signal that there is no more data in the next
+      // read
+      if (currentRow.getRowNum < firstDataRow) {
+        currentRow = null
+      }
+
       var rowMatchesSchema = true
       // If the data row does not exist then return a row of null values
       val rowData = if (currentRow == null) {
@@ -250,7 +263,6 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
         }
       }
 
-      currentDataRow += 1
       rowData.flatten
     }
 
@@ -261,8 +273,7 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
       currentSheet = sheetIterator.next()
       currentSheetName = UTF8String.fromString(currentSheet.getSheetName)
       firstDataRow = firstCellAddress.getRow + options.headerRowCount
-      lastDataRow = currentSheet.getLastRowNum
-      currentDataRow = firstDataRow
+      rowIterator = currentSheet.rowIterator().asScala
     }
 
     /**
@@ -320,18 +331,12 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
               case None => (UTF8String.fromString(currentCell.getNumericCellValue.toString), true)
             }
           }
-          case _: TimestampType if DateUtil.isCellDateFormatted(currentCell) =>
+          case _: TimestampType | DateType if DateUtil.isCellDateFormatted(currentCell) =>
             val ts = evaluatedFormulaCell match {
               case Some(evaluatedCell) => Timestamp.valueOf(DateUtil.getLocalDateTime(evaluatedCell.getNumberValue))
               case None => Timestamp.valueOf(DateUtil.getLocalDateTime(currentCell.getNumericCellValue))
             }
-            (DateTimeUtils.fromJavaTimestamp(ts), true)
-          case _: DateType if DateUtil.isCellDateFormatted(currentCell) =>
-            val ts = evaluatedFormulaCell match {
-              case Some(evaluatedCell) => Timestamp.valueOf(DateUtil.getLocalDateTime(evaluatedCell.getNumberValue))
-              case None => Timestamp.valueOf(DateUtil.getLocalDateTime(currentCell.getNumericCellValue))
-            }
-            (DateTimeUtils.fromJavaDate(Date.valueOf(ts.toLocalDateTime.toLocalDate)), true)
+            if (targetType == TimestampType) (DateTimeUtils.fromJavaTimestamp(ts), true) else (DateTimeUtils.fromJavaDate(Date.valueOf(ts.toLocalDateTime.toLocalDate)), true)
           case _: IntegerType => evaluatedFormulaCell match {
             case Some(evaluatedCell) => (evaluatedCell.getNumberValue.toInt, true)
             case None => (currentCell.getNumericCellValue.toInt, true)
@@ -405,60 +410,91 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
    */
   private def inferSchema(): StructType = {
     val sheet = workBook.getSheetAt(sheetIndexes.head)
-    val firstRow = sheet.getRow(firstCellAddress.getRow)
-
-    if (firstRow == null) throw new ExcelParserException("No data found on first row")
+    val rowIterator = sheet.rowIterator().asScala
 
     val firstColumnIndex = firstCellAddress.getColumn
-    val lastColumnIndex = firstRow.getLastCellNum.toInt
+    var lastColumnIndex = firstColumnIndex
+    val lastHeaderRow = firstCellAddress.getRow + options.headerRowCount - 1
+    var isHeaderComplete = false
+    var headers: Array[String] = Array.empty
+    var colTypes: Array[ListBuffer[Option[DataType]]] = Array.empty
+    var dataRowCount = 0
 
-    var firstDataRow = firstRow
+    // Iterate over the rows while there is a next row and the maximum number of rows to be read in, or
+    // all rows if the max row count is 0
+    while (rowIterator.hasNext && (options.maxRowCount == 0 || dataRowCount <= options.maxRowCount)) {
+      val currentRow = rowIterator.next()
+      var isDataRow = true
 
-    // Get the field names for the workbook. If the header option is defined then take the names from the column headers in
-    // the sheet. If not then generate the column names as "col_<index>" from the zero-based index
-    val fieldNames = if (options.headerRowCount > 0) {
-      val lastHeaderRow = firstCellAddress.getRow + options.headerRowCount - 1
-      // Set the first data row as the row after the header row
-      firstDataRow = sheet.getRow(firstCellAddress.getRow + options.headerRowCount)
-      firstColumnIndex.until(lastColumnIndex).zipWithIndex.map { case (colIndex, i) =>
-        // Get the current cell value (checking if it's part of a merged region). If the cell is null/blank then the header
-        // is set to "col_<index>" from the zero based index, otherwise the field name is cleaned
-        val headerContent = firstRow.getRowNum.to(lastHeaderRow).map { rowIndex =>
-          val currentHeaderCell = sheet.getRow(rowIndex).getCell(colIndex, Row.MissingCellPolicy.RETURN_NULL_AND_BLANK)
-          if (currentHeaderCell == null) "" else getMergedCell(currentHeaderCell).toString
-        }.distinct.mkString(" ")
-
-        val cleanedName = if (headerContent.trim.isEmpty) s"col_$i" else {
-          invalidFieldNameChars
-            .replaceAllIn(headerContent.trim, "_")
-            .replaceAll("""_+""", "_")
-            .stripSuffix("_")
+      breakable {
+        if (currentRow.getRowNum < firstCellAddress.getRow) {
+          break
         }
-        cleanedName
-      }
-    } else {
-      firstColumnIndex.to(lastColumnIndex).zipWithIndex.map { case (_, i) => s"col_$i" }
-    }
 
-    var fields = if (firstRow.getRowNum == sheet.getLastRowNum) {
-      // If there is no data in the file (other than the header) then return a default schema
-      firstColumnIndex.until(lastColumnIndex).zipWithIndex.map { case (_, i) =>
-        StructField(fieldNames(i), StringType, nullable = true)
-      }
-    } else {
-      // Determine the last data row, this is either the last row of data, or the maximum number of rows defined by the user
-      val lastRowNum = options.maxRowCount match {
-        case rowNum if rowNum != 0 && rowNum + firstDataRow.getRowNum <= sheet.getLastRowNum => rowNum + firstDataRow.getRowNum
-        case _ => sheet.getLastRowNum
-      }
+        // Determine the last column index based on the first valid row to read
+        if (firstColumnIndex == lastColumnIndex) {
+          lastColumnIndex = currentRow.getLastCellNum.toInt
+        }
 
-      // Get the field structure for data in the workbook
-      firstColumnIndex.until(lastColumnIndex).zipWithIndex.map { case (colIndex, i) =>
-        // Get the collection of types for the current column across the rows used for inferring the schema
-        val colTypes = firstDataRow.getRowNum.until(lastRowNum).flatMap(rowIndex => {
-          // Get the current cell (or cell containing data for part of a merged region), the determine the Spark DataType
-          // for the cell
-          val currentCell = sheet.getRow(rowIndex).getCell(colIndex, Row.MissingCellPolicy.RETURN_NULL_AND_BLANK)
+        // If the header information has not yet been read then handle header creation
+        if (!isHeaderComplete) {
+          if (options.headerRowCount == 0) {
+            // If no header rows have been defined then create the columns using the "col" prefix and the
+            // cell index
+            headers = firstColumnIndex.until(lastColumnIndex).zipWithIndex.map { case (_, i) => s"col_$i" }.toArray
+            isHeaderComplete = true
+          } else {
+            // Read in the string values for the current row and append them to the current header collection
+            val currentHeaderValues = firstColumnIndex.until(lastColumnIndex).zipWithIndex.map { case (colIndex, _) =>
+              val currentHeaderCell = currentRow.getCell(colIndex, Row.MissingCellPolicy.RETURN_NULL_AND_BLANK)
+              if (currentHeaderCell == null) "" else {
+                val cell = getMergedCell(currentHeaderCell)
+                if (cell.getCellType == CellType.STRING) {
+                  cell.getStringCellValue
+                } else {
+                  cell.toString
+                }
+              }
+            }
+            if (headers.isEmpty) {
+              // If no headers have been set yet then use this row as the initial set
+              headers = currentHeaderValues.toArray
+            } else {
+              // Append the current row values to the header values
+              currentHeaderValues.zipWithIndex.foreach {case (h, i) =>
+                if (h.trim.nonEmpty) headers(i) = s"${headers(i)} $h"
+              }
+            }
+            if (currentRow.getRowNum == lastHeaderRow) {
+              // If this is the last row of the header record then clean up the collected values
+              // and flag headers as having been completed
+              headers = headers.zipWithIndex.map {case (h, i) =>
+                if (h.trim.isEmpty) {
+                  s"col_$i"
+                } else {
+                  invalidFieldNameChars
+                    .replaceAllIn(h.trim, "_")
+                    .replaceAll("""_+""", "_")
+                    .stripSuffix("_")
+                }
+              }
+
+              isHeaderComplete = true
+            }
+
+            // If we are reading the current row as a header then it cannot be a data row as well
+            isDataRow = false
+          }
+        }
+
+        // Skip the row if it is not a data row
+        if (!isDataRow) {
+          break()
+        }
+
+        // Get the row types for the current row. Any cells which are invalid will not have a data type
+        val rowTypes = firstColumnIndex.until(lastColumnIndex).zipWithIndex.map { case (colIndex, _) =>
+          val currentCell = currentRow.getCell(colIndex, Row.MissingCellPolicy.RETURN_NULL_AND_BLANK)
           val fieldType: Option[DataType] = if (currentCell == null || currentCell.getCellType == CellType.BLANK) None else {
             val cellType = formulaEvaluator match {
               case Some(evaluator) => evaluator.evaluate(currentCell).getCellType
@@ -473,15 +509,36 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
             }
           }
           fieldType
-        })
-
-        // If all of the cells in the inference set are of the same type, then use this as the schema type, otherwise
-        // default to data as a string
-        if (colTypes.distinct.length == 1) {
-          StructField(fieldNames(i), colTypes.head, nullable = true)
-        } else {
-          StructField(fieldNames(i), StringType, nullable = true)
         }
+
+        if (colTypes.isEmpty) {
+          // If column types have not yet been collected then use this row as the initial set
+          colTypes = rowTypes.map(t => ListBuffer(t)).toArray
+        } else {
+          // Append the current rows types to the collected types so far
+          rowTypes.zipWithIndex.foreach { case (rt, i) =>
+            colTypes(i).append(rt)
+          }
+        }
+
+        dataRowCount += 1
+      }
+    }
+
+    // If no headers and no column types have been collected then this is an empty file
+    if (headers.isEmpty && colTypes.isEmpty) {
+      throw new ExcelParserException("No data found")
+    }
+
+    // Generate the fields based on the collected types
+    var fields = headers.zipWithIndex.map { case (header, i) =>
+      val columnTypes = if (i > colTypes.length || colTypes.isEmpty) Seq.empty else colTypes(i).flatten.distinct
+      if (columnTypes.length == 1) {
+        // If all of the data types in the collected rows are the same then use that type
+        StructField(header, columnTypes.head, nullable = true)
+      } else {
+        // If no data types exist, or they are different, then collect the data as a string value
+        StructField(header, StringType, nullable = true)
       }
     }
 

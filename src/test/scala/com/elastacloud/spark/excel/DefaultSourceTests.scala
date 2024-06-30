@@ -191,7 +191,7 @@ class DefaultSourceTests extends AnyFlatSpec with Matchers with BeforeAndAfterAl
         .count()
     }
 
-    error.getMessage should be("No data found on first row")
+    error.getMessage should be("No data found")
   }
 
   it should "return a single empty record if only headers exist" in {
