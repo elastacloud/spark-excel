@@ -686,4 +686,71 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
       actualData should be(expectedData)
     }
   }
+
+  "Opening a standard workbook when streaming" should "open the workbook and default to the first sheet using default options" in {
+    withInputStream("/Parser/SimpleWorkbook.xlsx") { inputStream =>
+      val options = new ExcelParserOptions(Map[String, String] {
+        "useStreaming" -> "true"
+      })
+
+      val parser = new ExcelParser(inputStream, options)
+      parser.sheetIndexes should equal(Seq(0))
+    }
+  }
+
+  it should "generate a valid schema from the worksheet" in {
+    withInputStream("/Parser/SimpleWorkbook.xlsx") { inputStream =>
+      val options = new ExcelParserOptions(Map[String, String] {
+        "useStreaming" -> "true"
+      })
+
+      val expectedSchema = StructType(Array(
+        StructField("Col1", StringType, nullable = true),
+        StructField("Col2", DoubleType, nullable = true),
+        StructField("Col3", StringType, nullable = true)
+      ))
+
+      val parser = new ExcelParser(inputStream, options)
+      parser.readDataSchema() should equal(expectedSchema)
+    }
+  }
+
+  it should "return all data from the first worksheet" in {
+    withInputStream("/Parser/SimpleWorkbook.xlsx") { inputStream =>
+      val options = new ExcelParserOptions(Map[String, String] {
+        "useStreaming" -> "true"
+      })
+
+      val expectedData = Seq(
+        Vector[Any]("a".asUnsafe, 1D, "x".asUnsafe),
+        Vector[Any]("b".asUnsafe, 2D, "y".asUnsafe),
+        Vector[Any]("c".asUnsafe, 3D, "z".asUnsafe)
+      )
+
+      val parser = new ExcelParser(inputStream, options)
+      val actualData = parser.getDataIterator.toList
+
+      actualData should equal(expectedData)
+    }
+  }
+
+  it should "read a subset of data given a different starting location" in {
+    withInputStream("/Parser/SimpleWorkbook.xlsx") { inputStream =>
+      val options = new ExcelParserOptions(Map[String, String](
+        "cellAddress" -> "B1",
+        "useStreaming" -> "true"
+      ))
+
+      val expectedSchema = StructType(Array(
+        StructField("Col2", DoubleType, nullable = true),
+        StructField("Col3", StringType, nullable = true)
+      ))
+
+      val expectedData = Seq(
+        Vector[Any](1D, "x".asUnsafe),
+        Vector[Any](2D, "y".asUnsafe),
+        Vector[Any](3D, "z".asUnsafe)
+      )
+    }
+  }
 }

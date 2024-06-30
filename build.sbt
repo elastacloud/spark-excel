@@ -23,6 +23,7 @@ val sparkVersion = settingKey[String]("Spark version")
 val sparkExcelVersion = settingKey[String]("Version of the Spark Excel library")
 val scalaTestVersion = settingKey[String]("ScalaTest version")
 val poiVersion = settingKey[String]("Apache POI version")
+val excelStreamReaderVersion = settingKey[String]("Excel Streaming Reader version")
 val log4JVersion = settingKey[String]("Apache Log4J version")
 
 name := "spark-excel"
@@ -63,6 +64,7 @@ libraryDependencies ++= Seq(
   "org.apache.commons" % "commons-compress" % "1.26.1" % Compile,
   "org.apache.commons" % "commons-collections4" % "4.4" % Compile,
   "commons-io" % "commons-io" % "2.16.1" % Compile,
+  "com.github.pjfanning" % "excel-streaming-reader" % excelStreamReaderVersion.value % Compile,
   "org.apache.logging.log4j" % "log4j-core" % log4JVersion.value % Compile,
   "org.apache.logging.log4j" % "log4j-api" % log4JVersion.value % Compile
 )
@@ -87,7 +89,8 @@ ThisBuild / assemblyShadeRules := Seq(
   ShadeRule.rename("org.apache.commons.collections4.**" -> "elastashade.commons.collections4.@1").inAll,
   ShadeRule.rename("org.apache.commons.compress.**" -> "elastashade.commons.compress.@1").inAll,
   ShadeRule.rename("org.apache.logging.log4j.**" -> "elastashade.logging.log4j.@1").inAll,
-  ShadeRule.rename("org.apache.commons.io.**" -> "elastashade.commons.io.@1").inAll
+  ShadeRule.rename("org.apache.commons.io.**" -> "elastashade.commons.io.@1").inAll,
+  ShadeRule.rename("com.github.pjfanning.**" -> "elastashade.github.pjfanning.@1").inAll
 )
 
 ThisBuild / assemblyMergeStrategy := {
@@ -99,6 +102,7 @@ ThisBuild / assemblyMergeStrategy := {
   case PathList("elastashade", "commons", "compress", _@_*) => MergeStrategy.last
   case PathList("elastashade", "commons", "collections4", _@_*) => MergeStrategy.last
   case PathList("elastashade", "logging", "log4j", _@_*) => MergeStrategy.last
+  case PathList("elastashade", "github", "pjfanning", _@_*) => MergeStrategy.last
   case PathList("org", "apache", "xmlbeans", _@_*) => MergeStrategy.last
   case PathList("org", "openxmlformats", "schemas", _@_*) => MergeStrategy.last
   case PathList("schemaorg_apache_xmlbeans", _@_*) => MergeStrategy.last
@@ -134,6 +138,7 @@ val commonSettings = Seq(
   },
   scalaTestVersion := "3.2.18",
   poiVersion := "5.2.5",
+  excelStreamReaderVersion := "4.3.1",
   log4JVersion := "2.23.1",
   crossVersion := CrossVersion.disabled
 )

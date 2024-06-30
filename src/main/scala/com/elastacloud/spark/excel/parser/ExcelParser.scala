@@ -18,6 +18,7 @@ package com.elastacloud.spark.excel.parser
 
 import com.elastacloud.spark.excel.ExcelParserOptions
 import com.elastacloud.spark.excel.parser.ExcelParser.providersAdded
+import com.github.pjfanning.xlsx.StreamingReader
 import org.apache.poi.hssf.usermodel.HSSFWorkbookFactory
 import org.apache.poi.openxml4j.util.{ZipInputStreamZipEntrySource, ZipSecureFile}
 import org.apache.poi.ss.usermodel._
@@ -57,9 +58,22 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
     ZipSecureFile.setMinInflateRatio(0)
     ZipInputStreamZipEntrySource.setThresholdBytesForTempFiles(options.thresholdBytesForTempFiles)
 
-    options.workbookPassword match {
-      case Some(password) => WorkbookFactory.create(inputStream, password)
-      case _ => WorkbookFactory.create(inputStream)
+    options.useStreaming match {
+      case false => options.workbookPassword match {
+        case Some(password) => WorkbookFactory.create(inputStream, password)
+        case _ => WorkbookFactory.create(inputStream)
+      }
+      case true => {
+        val builder = StreamingReader.builder()
+          .rowCacheSize(100)
+          .bufferSize(8192)
+
+        if (options.workbookPassword.nonEmpty) {
+          builder.password(options.workbookPassword.get)
+        }
+
+        builder.open(inputStream)
+      }
     }
   }
 

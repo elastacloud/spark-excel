@@ -54,6 +54,7 @@ private[excel] class ExcelParserOptions(
     case _ =>
   }
 
+  val useStreaming: Boolean = parameters.getOrElse("useStreaming", "false").toBoolean
   val workbookPassword: Option[String] = parameters.get("workbookPassword")
   val sheetNamePattern: String = parameters.getOrElse("sheetNamePattern", "")
   val cellAddress: String = parameters.getOrElse("cellAddress", "A1")
@@ -62,13 +63,16 @@ private[excel] class ExcelParserOptions(
   val includeSheetName: Boolean = parameters.getOrElse("includeSheetName", "false").toBoolean
   val nulLValue: Option[String] = parameters.get("nullValue")
   val thresholdBytesForTempFiles: Int = parameters.getOrElse("thresholdBytesForTempFiles", parameters.getOrElse("maxBytesForTempFiles", "100000000")).toInt
-  val evaluateFormulae: Boolean = parameters.getOrElse("evaluateFormulae", "true").toBoolean
+  val evaluateFormulae: Boolean = if (useStreaming) {
+    false
+  } else {
+    parameters.getOrElse("evaluateFormulae", "true").toBoolean
+  }
 
   val schemaMatchColumnName: String = parameters.getOrElse("schemaMatchColumnName", null)
   if (schemaMatchColumnName != null && schemaMatchColumnName.trim.isEmpty) {
     throw new ExcelParserOptionsException("The 'schemaMatchColumnName' option must contain a value if provided")
   }
-
 }
 
 /**
@@ -79,6 +83,7 @@ private[excel] object ExcelParserOptions {
   private val encoder = new DoubleMetaphone()
 
   private val mappings = Map[String, String](
+    encoder.encode("useStreaming") -> "useStreaming",
     encoder.encode("workbookPassword") -> "workbookPassword",
     encoder.encode("sheetNamePattern") -> "sheetNamePattern",
     encoder.encode("cellAddress") -> "cellAddress",
