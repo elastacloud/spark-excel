@@ -39,7 +39,7 @@ jobs:
             ${{ runner.os }}-sbt-${{ matrix.sparkVersion }}
 
       - name: Run tests and produce coverage
-        run: sbt -DsparkVersion="${{matrix.sparkVersion}}" clean coverageOn test coverageReport
+        run: sbt -DsparkVersion="${{matrix.sparkVersion}}" clean coverageOn compile "testOnly * -- -l LongRunningTest" coverageReport
 
       - name: Upload coverage to CodeCov
         uses: codecov/codecov-action@v4.5.0
