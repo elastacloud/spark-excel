@@ -227,4 +227,28 @@ class DefaultSourceTests extends AnyFlatSpec with Matchers with BeforeAndAfterAl
 
     thrown.getMessage should include("Write is not supported")
   }
+
+  "Reading a file using streaming" should "return a valid data frame" in {
+    import spark.implicits._
+
+    val inputPath = testFilePath("/Parser/SimpleWorkbook.xlsx")
+
+    val expectedDF = Seq(
+      ("a", 1D, "x"),
+      ("b", 2D, "y"),
+      ("c", 3D, "z")
+    ).toDF("col_0", "col_1", "col_2")
+
+    val df = spark.read
+      .format("excel")
+      .option("useStreaming", "true")
+      .option("cellAddress", "A2")
+      .option("headerRowCount", "0")
+      .load(inputPath)
+
+    df.count() should be(3)
+
+    val differences = expectedDF except df
+    differences.count() should be(0)
+  }
 }

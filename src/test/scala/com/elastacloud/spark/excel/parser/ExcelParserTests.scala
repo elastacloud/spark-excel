@@ -775,11 +775,25 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
     }
   }
 
-  "Reading larger files using streaming" should "not result in GC collection issues" taggedAs LongRunningTest in {
-    withInputStream("/Parser/parking-citations-smaller.xlsx") { inputStream =>
-      val options = new ExcelParserOptions(Map[String, String]{
+  "Reading using streaming" should "throw an error for XLS formats" in {
+    withInputStream("/Parser/SimpleWorkbook.xls") { inputStream =>
+      val options = new ExcelParserOptions(Map[String, String](
         "useStreaming" -> "true"
-      })
+      ))
+
+      val error = intercept[ExcelParserException] {
+        new ExcelParser(inputStream, options)
+      }
+
+      error.getMessage should be("Unable to open non-xlsx files in streaming mode")
+    }
+  }
+
+  it should "not result in GC collection issues for larger files" taggedAs LongRunningTest in {
+    withInputStream("/Parser/parking-citations-smaller.xlsx") { inputStream =>
+      val options = new ExcelParserOptions(Map[String, String](
+        "useStreaming" -> "true"
+      ))
 
       val expectedSchema = new StructType(Array(
         StructField("Ticket_number", DoubleType, nullable = true),
@@ -803,12 +817,35 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
         StructField("Longitude", DoubleType, nullable = true)
       ))
 
+      val expectedRecord = Vector[Any](
+        4357210690D,
+        "2019-07-30T00:00:00.000".asUnsafe,
+        1803D,
+        null,
+        null,
+        "CA".asUnsafe,
+        202008D,
+        null,
+        "VOLK".asUnsafe,
+        "PA".asUnsafe,
+        "WT".asUnsafe,
+        "1245 FACTORY PL".asUnsafe,
+        "00600".asUnsafe,
+        56D,
+        "80.69B".asUnsafe,
+        "NO PARKING".asUnsafe,
+        73D,
+        6489735.158943,
+        1836708.022147
+      )
+
       val parser = new ExcelParser(inputStream, options)
       val actualData = parser.getDataIterator.toList
       val schema = parser.excelSchema
 
       actualData.length should be(300593)
       actualData.last.head should be(4354211083.0)
+      actualData(999) should equal(expectedRecord)
       schema.get should equal(expectedSchema)
     }
   }

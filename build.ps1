@@ -35,7 +35,7 @@ New-Item -Path $covPath -ItemType Directory
 foreach ($version in $versions)
 {
     Write-Host "Building for Spark version: $version" -ForegroundColor Green
-    & sbt -DsparkVersion="$version" clean coverageOn test coverageReport coverageOff assembly
+    & sbt -DsparkVersion="$version" clean coverageOn compile "testOnly * -- -l LongRunningTest" coverageReport coverageOff assembly
 }
 
 Write-Host "Copying jar files to $jarPath" -ForegroundColor Green

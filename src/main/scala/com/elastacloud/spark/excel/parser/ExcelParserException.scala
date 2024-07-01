@@ -16,4 +16,4 @@
 
 package com.elastacloud.spark.excel.parser
 
-final class ExcelParserException(message: String) extends Exception(message) {}
+final class ExcelParserException(message: String, cause: Throwable = None.orNull) extends Exception(message, cause) {}

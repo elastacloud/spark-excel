@@ -19,6 +19,7 @@ package com.elastacloud.spark.excel.parser
 import com.elastacloud.spark.excel.ExcelParserOptions
 import com.elastacloud.spark.excel.parser.ExcelParser.providersAdded
 import com.github.pjfanning.xlsx.StreamingReader
+import com.github.pjfanning.xlsx.exceptions.ReadException
 import org.apache.poi.hssf.usermodel.HSSFWorkbookFactory
 import org.apache.poi.openxml4j.util.{ZipInputStreamZipEntrySource, ZipSecureFile}
 import org.apache.poi.ss.usermodel._
@@ -70,7 +71,12 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
         builder.password(options.workbookPassword.get)
       }
 
-      builder.open(inputStream)
+      try {
+        builder.open(inputStream)
+      }
+      catch {
+        case ex: ReadException => throw new ExcelParserException("Unable to open non-xlsx files in streaming mode", ex)
+      }
     } else {
       options.workbookPassword match {
         case Some(password) => WorkbookFactory.create(inputStream, password)
