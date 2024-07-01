@@ -6,7 +6,7 @@
 A Spark data source for reading Microsoft Excel workbooks. Initially started to "scratch and itch" and to learn how to
 write data sources using the
 Spark [DataSourceV2](https://spark.apache.org/docs/latest/api/java/org/apache/spark/sql/sources/v2/DataSourceV2.html)
-APIs. This is based on the [Apache POI](https://poi.apache.org/) library which provides the means to read Excel files.
+APIs. This is based on the [Apache POI](https://poi.apache.org/) library which provides the means to read Excel files. Also in use is the [Excel Streaming Reader library](https://github.com/pjfanning/excel-streaming-reader-sample) for handling streaming support when reading files (if enabled). 
 
 _N.B._ This project is only intended as a reader and is opinionated about this. There are no plans to implement writer
 functionality into the project.
@@ -25,6 +25,8 @@ version of Spark you're developing against.
 ## Features
 
 - Handling Excel 97-2003, 2010, and OOXML files (thanks to Apache POI)
+- Streaming support for larger files
+    - Note. Streaming support is only available for XLSX files (OOXML) and will disable formula evaluation
 - Multi-line headers
 - Reading from multiple worksheets given a name pattern
 - Glob pattern support for reading multiple files
@@ -127,6 +129,7 @@ The library supports the following options:
 | thresholdBytesForTempFiles | Int     | 10000000 | _Alias for maxBytesForTempFiles_                                                                                                                                                                                                                          |
 | schemaMatchColumnName      | Boolean | False    | Defines the column name to write the flag indicating if the current record matches the provided or inferred schema. If the schema is provided then the column name must exist within that provided schema.                                                |
 | evaluateFormulae           | Boolean | True     | Instructs the parser to evaluate formulas in the source (True), or to extract only the formula itself (False, e.g. A7*2).                                                                                                                                 |
+| useStreaming               | Boolean | False    | Enables streaming support which helps when reading larger files as the entire content does not need to be loaded into memory. _N.B._ Enabling streaming will disable formula evaluation as this is not supported in streaming.                            |
 
 ```scala
 val df = spark.read
@@ -140,6 +143,7 @@ val df = spark.read
   .option("thresholdBytesForTempFiles", 50000000) // Set size limit before temp files are used
   .option("schemaMatchColumnName", "_isValid") // Write a flag to the '_isValid' column indicating if the records matches the schema
   .option("evaluateFormulae", "true") // Evaluate the formula in the spreadsheet
+  .option("useStreaming", "false") // Indicates if streaming is to be used
   .load("/path/to/file.xlsx")
 ```
 
