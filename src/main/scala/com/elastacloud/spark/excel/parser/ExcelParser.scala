@@ -63,7 +63,7 @@ private[excel] class ExcelParser(inputStream: InputStream, options: ExcelParserO
     if (options.useStreaming) {
       val builder = StreamingReader.builder()
         .rowCacheSize(100)
-        .bufferSize(8192)
+        .bufferSize(4096)
         .setReadSharedFormulas(true)
 
       if (options.workbookPassword.nonEmpty) {

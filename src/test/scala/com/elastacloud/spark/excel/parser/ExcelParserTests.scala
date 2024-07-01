@@ -20,6 +20,7 @@ import com.elastacloud.spark.excel.ExcelParserOptions
 import org.apache.spark.sql.catalyst.util.DateTimeUtils
 import org.apache.spark.sql.types._
 import org.apache.spark.unsafe.types.UTF8String
+import org.scalatest.Tag
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.prop.TableDrivenPropertyChecks.forAll
@@ -27,6 +28,8 @@ import org.scalatest.prop.Tables.Table
 
 import java.io.{FileInputStream, InputStream}
 import java.sql.{Date, Timestamp}
+
+object LongRunningTest extends Tag("LongRunningTest")
 
 class ExcelParserTests extends AnyFlatSpec with Matchers {
   private def getTestFileStream(relativePath: String): InputStream = {
@@ -769,6 +772,44 @@ class ExcelParserTests extends AnyFlatSpec with Matchers {
 
         actualData should be(expectedData)
       }
+    }
+  }
+
+  "Reading larger files using streaming" should "not result in GC collection issues" taggedAs LongRunningTest in {
+    withInputStream("/Parser/parking-citations-smaller.xlsx") { inputStream =>
+      val options = new ExcelParserOptions(Map[String, String]{
+        "useStreaming" -> "true"
+      })
+
+      val expectedSchema = new StructType(Array(
+        StructField("Ticket_number", DoubleType, nullable = true),
+        StructField("Issue_Date", StringType, nullable = true),
+        StructField("Issue_time", DoubleType, nullable = true),
+        StructField("Meter_Id", StringType, nullable = true),
+        StructField("Marked_Time", DoubleType, nullable = true),
+        StructField("RP_State_Plate", StringType, nullable = true),
+        StructField("Plate_Expiry_Date", DoubleType, nullable = true),
+        StructField("VIN", StringType, nullable = true),
+        StructField("Make", StringType, nullable = true),
+        StructField("Body_Style", StringType, nullable = true),
+        StructField("Color", StringType, nullable = true),
+        StructField("Location", StringType, nullable = true),
+        StructField("Route", StringType, nullable = true),
+        StructField("Agency", DoubleType, nullable = true),
+        StructField("Violation_code", StringType, nullable = true),
+        StructField("Violation_Description", StringType, nullable = true),
+        StructField("Fine_amount", DoubleType, nullable = true),
+        StructField("Latitude", DoubleType, nullable = true),
+        StructField("Longitude", DoubleType, nullable = true)
+      ))
+
+      val parser = new ExcelParser(inputStream, options)
+      val actualData = parser.getDataIterator.toList
+      val schema = parser.excelSchema
+
+      actualData.length should be(300593)
+      actualData.last.head should be(4354211083.0)
+      schema.get should equal(expectedSchema)
     }
   }
 }
